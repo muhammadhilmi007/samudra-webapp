@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Samudra ERP - Frontend
 
-## Getting Started
+Samudra ERP adalah sistem Enterprise Resource Planning (ERP) terpadu yang dirancang khusus untuk perusahaan logistik dan pengiriman. Frontend ini dibangun menggunakan Next.js dengan App Router, diintegrasikan dengan backend Node.js dan MongoDB.
 
-First, run the development server:
+## Fitur Utama
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Dashboard** - Tampilan komprehensif untuk metrik bisnis dan KPI
+- **Manajemen Master Data** - Divisi, Cabang, Pegawai, Pelanggan, Kendaraan
+- **Operasional** - Pengambilan, STT, Muat & Transit, Lansir, Retur
+- **Keuangan** - Penagihan, Kas & Bank, Jurnal Umum, Aset
+- **Laporan** - Penjualan, Operasional, Keuangan
+
+## Teknologi yang Digunakan
+
+- **Next.js 14** - Framework React dengan App Router
+- **Tailwind CSS** - Untuk styling yang konsisten dan responsive
+- **shadcn/ui** - Komponen UI yang dapat disesuaikan
+- **Redux Toolkit** - State management
+- **React Hook Form** - Manajemen form yang efisien
+- **Recharts** - Visualisasi data
+- **Axios** - HTTP client
+
+## Instalasi dan Pengaturan
+
+### Prasyarat
+
+- Node.js 18.0.0 atau lebih baru
+- Backend Samudra ERP berjalan pada `http://localhost:5000` (atau konfigurasi di .env.local)
+
+### Langkah Instalasi
+
+1. Klon repositori
+   ```sh
+   git clone https://github.com/username/samudra-erp-frontend.git
+   cd samudra-erp-frontend
+   ```
+
+2. Instal dependensi
+   ```sh
+   npm install
+   ```
+
+3. Buat file `.env.local` dan sesuaikan konfigurasi
+   ```sh
+   cp .env.example .env.local
+   ```
+   Edit `.env.local` dan sesuaikan variabel seperti `API_URL`
+
+4. Jalankan server development
+   ```sh
+   npm run dev
+   ```
+
+5. Buka [http://localhost:3000](http://localhost:3000) di browser
+
+## Struktur Proyek
+
+- `app/` - Halaman dan routes menggunakan Next.js App Router
+- `components/` - Komponen React yang dapat digunakan kembali
+  - `ui/` - Komponen dasar UI (button, card, dll)
+  - `layout/` - Komponen layout (sidebar, header, dll)
+  - `forms/` - Form-form untuk input data
+  - `data-tables/` - Komponen tabel untuk menampilkan data
+- `lib/` - Utilitas dan konfigurasi
+  - `redux/` - Store dan slices Redux
+  - `hooks/` - Custom React hooks
+  - `utils/` - Fungsi utilitas
+  - `api.js` - Klien API Axios
+
+## Deployment
+
+### Build untuk Production
+
+```sh
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Menjalankan Build Production
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+```sh
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Integrasi dengan Backend
 
-## Learn More
+Frontend ini didesain untuk bekerja dengan backend Samudra ERP API. Pastikan backend berjalan dan dapat diakses pada URL yang dikonfigurasi di `.env.local` (`API_URL`).
 
-To learn more about Next.js, take a look at the following resources:
+## Dukungan Browser
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Aplikasi ini mendukung browser modern terkini:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Chrome
+- Firefox
+- Safari
+- Edge
 
-## Deploy on Vercel
+## Lisensi
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE)
