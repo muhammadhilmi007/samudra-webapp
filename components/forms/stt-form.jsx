@@ -6,6 +6,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getCurrentUser } from "@/lib/auth";
 import {
   createSTT,
   updateSTT,
@@ -214,9 +215,19 @@ export default function STTForm({ sttId }) {
       }
     }
   }, [error, success, toast, isEditing, router, createdSTTId]);
-
   // Handle form submission
   const onSubmit = async (data) => {
+    const currentUser = getCurrentUser();
+
+    if (!currentUser || !currentUser._id) {
+      toast({
+        title: "Error",
+        description: "Sesi login telah berakhir. Silakan login kembali.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Add calculated total price to data
     const sttData = {
       ...data,
@@ -225,8 +236,8 @@ export default function STTForm({ sttId }) {
       jumlahColly: Number(data.jumlahColly) || 1,
       berat: Number(data.berat) || 0,
       hargaPerKilo: Number(data.hargaPerKilo) || 0,
-      userId: "64f5b8d77a33ab1b242b3a1c", // Sample user ID
-      cabangId: data.cabangAsalId, // Use the selected cabangAsalId as the cabangId
+      userId: currentUser._id,
+      cabangId: currentUser.cabangId,
     };
 
     if (isEditing) {
