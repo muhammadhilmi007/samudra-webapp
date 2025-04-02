@@ -1,3 +1,4 @@
+// components/forms/vehicle-form.jsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,7 +15,7 @@ import {
   uploadVehicleDocument,
 } from "@/lib/redux/slices/vehicleSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
-import { fetchDrivers } from "@/lib/redux/slices/pegawaiSlice";
+import { fetchEmployees } from "@/lib/redux/slices/pegawaiSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -153,12 +154,12 @@ export default function VehicleForm({ vehicleId }) {
   // Fetch data if editing
   useEffect(() => {
     dispatch(fetchBranches());
-    dispatch(fetchDrivers());
-
-    if (isEditing && vehicleId) {
-      dispatch(fetchVehicleById(vehicleId));
-    }
-  }, [dispatch, isEditing, vehicleId]);
+    dispatch(fetchEmployees());
+  
+  if (isEditing && vehicleId) {
+    dispatch(fetchVehicleById(vehicleId));
+  }
+}, [dispatch, isEditing, vehicleId]);
 
   // Populate form when data is fetched
   useEffect(() => {
@@ -431,6 +432,7 @@ export default function VehicleForm({ vehicleId }) {
         driver.jabatan?.toLowerCase().includes("assistant")
     ) || [];
 
+  // components/forms/vehicle-form.jsx (continued)
   const isUploading =
     isUploadingDriverPhoto ||
     isUploadingDriverIDCard ||
@@ -560,14 +562,11 @@ export default function VehicleForm({ vehicleId }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="Lansir">
+                              <SelectItem value="lansir">
                                 Lansir (Pengiriman Lokal)
                               </SelectItem>
-                              <SelectItem value="Antar Cabang">
+                              <SelectItem value="antar_cabang">
                                 Antar Cabang
-                              </SelectItem>
-                              <SelectItem value="Pickup">
-                                Pickup (Pengambilan)
                               </SelectItem>
                             </SelectContent>
                           </Select>
@@ -802,7 +801,7 @@ export default function VehicleForm({ vehicleId }) {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">Tidak Ada</SelectItem>
+                            <SelectItem value="all">Tidak Ada</SelectItem>
                             {filteredHelpers.map((helper) => (
                               <SelectItem key={helper._id} value={helper._id}>
                                 {helper.nama}
