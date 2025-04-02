@@ -96,7 +96,7 @@ export default function DivisiPage() {
   
   // Filter divisions based on search query
   const filteredDivisions = divisions.filter(division =>
-    division.namaDivisi.toLowerCase().includes(searchQuery.toLowerCase())
+    division.namaDivisi?.toLowerCase().includes(searchQuery.toLowerCase())
   )
   
   return (
