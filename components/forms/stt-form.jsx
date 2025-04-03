@@ -218,13 +218,10 @@ export default function STTForm({ sttId }) {
   // Handle form submission
   const onSubmit = async (data) => {
     const currentUser = getCurrentUser();
-
-    if (!currentUser || !currentUser._id) {
-      toast({
-        title: "Error",
-        description: "Sesi login telah berakhir. Silakan login kembali.",
-        variant: "destructive",
-      });
+    
+    // getCurrentUser will automatically handle invalid sessions
+    if (!currentUser) {
+      // No need for toast since getCurrentUser already handles logout
       return;
     }
 
