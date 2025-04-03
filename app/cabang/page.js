@@ -56,6 +56,7 @@ export default function CabangPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [branchToDelete, setBranchToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [divisionsLoaded, setDivisionsLoaded] = useState(false);
 
   // Mock user data (replace with actual auth logic)
   const mockUser = {
@@ -65,9 +66,20 @@ export default function CabangPage() {
   };
 
   useEffect(() => {
-    dispatch(fetchBranches());
-    dispatch(fetchDivisions());
+    const loadData = async () => {
+      await dispatch(fetchDivisions());
+      await dispatch(fetchBranches());
+    };
+
+    loadData();
   }, [dispatch]);
+
+  useEffect(() => {
+    if (divisions && divisions.length > 0) {
+      setDivisionsLoaded(true);
+      console.log("Divisions loaded:", divisions);
+    }
+  }, [divisions]);
 
   useEffect(() => {
     if (error) {
@@ -114,7 +126,26 @@ export default function CabangPage() {
 
   // Find division name by id
   const getDivisionName = (divisionId) => {
-    const division = divisions.find((div) => div._id === divisionId);
+    if (!divisionId) return "-";
+
+    // Make sure divisions is available and not empty
+    if (!divisions || !Array.isArray(divisions) || divisions.length === 0) {
+      return "-";
+    }
+
+    // Debug log - remove in production
+    console.log("Looking for division ID:", divisionId);
+    console.log("Available divisions:", divisions);
+
+    // Try to find the division
+    const division = divisions.find((div) => {
+      // Compare as strings to avoid type issues
+      return (
+        String(div._id) === String(divisionId) ||
+        String(div.id) === String(divisionId)
+      );
+    });
+
     return division ? division.namaDivisi : "-";
   };
 
@@ -257,7 +288,13 @@ export default function CabangPage() {
                             </TableCell>
                             <TableCell>{branch.namaCabang}</TableCell>
                             <TableCell>
-                              {getDivisionName(branch.divisiId)}
+                              {!divisionsLoaded ? (
+                                <span className="text-gray-400">
+                                  Loading...
+                                </span>
+                              ) : (
+                                getDivisionName(branch.divisiId)
+                              )}
                             </TableCell>
                             <TableCell>{branch.kota || "-"}</TableCell>
                             <TableCell>{branch.provinsi || "-"}</TableCell>
