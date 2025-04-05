@@ -6,14 +6,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchPickups, updatePickupStatus } from '@/lib/redux/slices/pickupSlice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataTable } from '@/components/data-tables/data-table';
+import DataTable from '@/components/data-tables/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/lib/hooks/use-toast';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { formatDate } from '@/lib/utils/format';
+import { useToast } from '@/lib/hooks/use-toast'; // Fixed import path
+import StatusBadge from '@/components/shared/status-badge';
+import { formatDate } from '@/lib/utils'; // Fixed import to use named export
 import Link from 'next/link';
-import { PlusCircle, FileDown, Filter } from 'lucide-react';
+import { PlusCircle, FileDown } from 'lucide-react';
 import { Breadcrumbs } from '@/components/shared/breadcrumbs';
 
 export default function PickupsPage() {
@@ -36,7 +36,7 @@ export default function PickupsPage() {
     } catch (error) {
       toast({
         title: "Gagal mengubah status",
-        description: error.message,
+        description: error.message || "Terjadi kesalahan saat mengubah status",
         variant: "destructive",
       });
     }
@@ -60,7 +60,7 @@ export default function PickupsPage() {
     {
       accessorKey: "pengirim",
       header: "Pengirim",
-      cell: ({ row }) => row.original.pengirim?.nama || "-",
+      cell: ({ row }) => row.original.pengirimId?.nama || "-",
     },
     {
       accessorKey: "alamatPengambilan",
@@ -73,7 +73,7 @@ export default function PickupsPage() {
     {
       accessorKey: "supir",
       header: "Supir",
-      cell: ({ row }) => row.original.supir?.nama || "-",
+      cell: ({ row }) => row.original.supirId?.nama || "-",
     },
     {
       accessorKey: "status",
@@ -111,7 +111,7 @@ export default function PickupsPage() {
     },
   ];
   
-  // Filter data berdasarkan tab aktif
+  // Filter data based on active tab
   const filteredData = pickups.filter(item => {
     if (activeTab === 'all') return true;
     if (activeTab === 'pending') return item.status === 'PENDING';
@@ -179,43 +179,7 @@ export default function PickupsPage() {
               <TabsTrigger value="selesai">Selesai</TabsTrigger>
               <TabsTrigger value="cancelled">Dibatalkan</TabsTrigger>
             </TabsList>
-            <TabsContent value="all" className="p-0 mt-2">
-              <DataTable
-                columns={columns}
-                data={filteredData}
-                loading={loading}
-                searchPlaceholder="Cari pengambilan..."
-                searchColumn="noPengambilan"
-              />
-            </TabsContent>
-            <TabsContent value="pending" className="p-0 mt-2">
-              <DataTable
-                columns={columns}
-                data={filteredData}
-                loading={loading}
-                searchPlaceholder="Cari pengambilan..."
-                searchColumn="noPengambilan"
-              />
-            </TabsContent>
-            <TabsContent value="berangkat" className="p-0 mt-2">
-              <DataTable
-                columns={columns}
-                data={filteredData}
-                loading={loading}
-                searchPlaceholder="Cari pengambilan..."
-                searchColumn="noPengambilan"
-              />
-            </TabsContent>
-            <TabsContent value="selesai" className="p-0 mt-2">
-              <DataTable
-                columns={columns}
-                data={filteredData}
-                loading={loading}
-                searchPlaceholder="Cari pengambilan..."
-                searchColumn="noPengambilan"
-              />
-            </TabsContent>
-            <TabsContent value="cancelled" className="p-0 mt-2">
+            <TabsContent value={activeTab} className="p-0 mt-2">
               <DataTable
                 columns={columns}
                 data={filteredData}

@@ -6,7 +6,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchAccounts } from '@/lib/redux/slices/financeSlice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataTable } from '@/components/data-tables/data-table';
+import  DataTable from '@/components/data-tables/data-table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/lib/hooks/use-toast';

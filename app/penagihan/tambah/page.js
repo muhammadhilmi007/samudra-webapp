@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 import {
   createCollection
 } from '@/lib/redux/slices/collectionSlice';
-import { fetchCustomersByCabang } from '@/lib/redux/slices/customerSlice';
-import { fetchSTTsByPaymentType } from '@/lib/redux/slices/sttSlice';
+import fetchCustomersByCabang from '@/lib/redux/slices/customerSlice';
+import fetchSTTsByPaymentType from '@/lib/redux/slices/sttSlice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/shared/breadcrumbs';
@@ -29,8 +29,8 @@ import { z } from 'zod';
 import { ArrowLeft, Save } from 'lucide-react';
 import Link from 'next/link';
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, Form } from '@/components/ui/form';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { formatDate, formatCurrency } from '@/lib/utils/format';
+import StatusBadge from '@/components/shared/status-badge';
+import formatCurrency from '@/lib/utils/format';
 
 // Validation schema
 const formSchema = z.object({

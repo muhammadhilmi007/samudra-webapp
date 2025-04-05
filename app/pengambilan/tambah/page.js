@@ -8,9 +8,9 @@ import {
   createPickup,
   fetchPickupRequestById
 } from '@/lib/redux/slices/pickupSlice';
-import { fetchCustomersByCabang } from '@/lib/redux/slices/customerSlice';
+import { fetchCustomersByBranch } from '@/lib/redux/slices/customerSlice';
 import { fetchVehiclesByBranch } from '@/lib/redux/slices/vehicleSlice';
-import { fetchEmployeesByBranch } from '@/lib/redux/slices/employeeSlice';
+import { fetchEmployeesByBranch } from '@/lib/redux/slices/pegawaiSlice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/shared/breadcrumbs';
@@ -57,10 +57,11 @@ export default function AddPickupPage() {
   const searchParams = useSearchParams();
   const requestId = searchParams.get('requestId');
   
+  const { pickupRequest, currentUser } = useSelector(state => state.auth);
   const { customers } = useSelector(state => state.customer);
   const { vehicles } = useSelector(state => state.vehicle);
-  const { employees } = useSelector(state => state.employee);
-  const { pickupRequest, currentUser } = useSelector(state => state.auth);
+  const { employeesByBranch } = useSelector(state => state.pegawai);
+  const employees = currentUser?.cabangId ? (employeesByBranch[currentUser.cabangId] || []) : [];
   
   const form = useForm({
     resolver: zodResolver(formSchema),
@@ -79,7 +80,7 @@ export default function AddPickupPage() {
   useEffect(() => {
     // Jika user sudah login dan memiliki cabangId, fetch data yang dibutuhkan
     if (currentUser?.cabangId) {
-      dispatch(fetchCustomersByCabang(currentUser.cabangId));
+      dispatch(fetchCustomersByBranch(currentUser.cabangId));
       dispatch(fetchVehiclesByBranch(currentUser.cabangId));
       dispatch(fetchEmployeesByBranch(currentUser.cabangId));
     }
@@ -320,7 +321,7 @@ export default function AddPickupPage() {
                          </SelectTrigger>
                        </FormControl>
                        <SelectContent>
-                         <SelectItem value="">Tidak ada kenek</SelectItem>
+                         <SelectItem value="all">Tidak ada kenek</SelectItem>
                          {helpers.map((helper) => (
                            <SelectItem key={helper._id} value={helper._id}>
                              {helper.nama}

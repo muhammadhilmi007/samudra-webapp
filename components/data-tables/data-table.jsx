@@ -168,7 +168,7 @@ export default function DataTable({
     // Show loading state
     if (loading) {
       return (
-        <TableRow>
+        <TableRow key="loading-state">
           <TableCell
             colSpan={
               columns.length + (rowActions ? 1 : 0) + (isSelectable ? 1 : 0)
@@ -186,7 +186,7 @@ export default function DataTable({
     // Show error state
     if (error) {
       return (
-        <TableRow>
+        <TableRow key="error-state">
           <TableCell
             colSpan={
               columns.length + (rowActions ? 1 : 0) + (isSelectable ? 1 : 0)
@@ -202,7 +202,7 @@ export default function DataTable({
     // Show empty state
     if (!data || data.length === 0) {
       return (
-        <TableRow>
+        <TableRow key="empty-state">
           <TableCell
             colSpan={
               columns.length + (rowActions ? 1 : 0) + (isSelectable ? 1 : 0)
