@@ -79,10 +79,10 @@ export default function DataTable({
   };
 
   // Handle sorting
-  const handleSort = (field) => {
+  const handleSort = (columnKey) => {
     const direction =
-      sortField === field && sortDirection === "asc" ? "desc" : "asc";
-    onSortChange(field, direction);
+      sortField === columnKey && sortDirection === "asc" ? "desc" : "asc";
+    onSortChange(columnKey, direction);
   };
 
   // Handle filter clearing
@@ -137,12 +137,12 @@ export default function DataTable({
 
           {columns.map((column) => (
             <TableHead
-              key={column.field}
+              key={column.accessorKey || column.id}
               className={cn(
                 column.className,
                 column.sortable && "cursor-pointer hover:text-foreground"
               )}
-              onClick={() => column.sortable && handleSort(column.field)}
+              onClick={() => column.sortable && handleSort(column.accessorKey || column.id)}
             >
               <div className="flex items-center">
                 {column.header}
@@ -245,8 +245,8 @@ export default function DataTable({
         )}
 
         {columns.map((column) => (
-          <TableCell key={column.field} className={column.cellClassName}>
-            {column.render ? column.render(row, rowIndex) : row[column.field]}
+          <TableCell key={column.accessorKey || column.id} className={column.cellClassName}>
+            {column.render ? column.render(row, rowIndex) : row[column.accessorKey]}
           </TableCell>
         ))}
 

@@ -1,52 +1,42 @@
-"use client"
+// components/shared/breadcrumbs.jsx
+"use client";
 
-import Link from 'next/link'
-import { ChevronRight, Home } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import Link from "next/link";
+import { ChevronRight, Home } from "lucide-react";
 
-export function Breadcrumbs({ items = [], className }) {
+export function Breadcrumbs({ items }) {
   return (
-    <nav aria-label="Breadcrumb" className={cn("flex", className)}>
-      <ol className="flex items-center space-x-2 text-sm text-muted-foreground">
-        <li className="flex items-center">
-          <Link 
-            href="/dashboard" 
-            className="flex items-center hover:text-foreground transition-colors"
+    <nav className="flex" aria-label="Breadcrumb">
+      <ol className="inline-flex items-center space-x-1 md:space-x-2 text-sm">
+        <li className="inline-flex items-center">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
           >
-            <Home className="h-4 w-4" />
-            <span className="sr-only">Dashboard</span>
+            <Home className="w-4 h-4 mr-2" />
+            Dashboard
           </Link>
         </li>
-        
-        {items.map((item, index) => {
-          const isLast = index === items.length - 1
-          
-          return (
-            <li key={index} className="flex items-center">
-              <ChevronRight className="h-4 w-4 mx-1" />
-              
-              {isLast || !item.link ? (
-                <span 
-                  className={cn(
-                    "font-medium",
-                    isLast ? "text-foreground" : "text-muted-foreground"
-                  )}
-                  aria-current={isLast ? "page" : undefined}
+        {items.slice(1).map((item, i) => (
+          <li key={i}>
+            <div className="flex items-center">
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="ml-1 md:ml-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 >
-                  {item.title}
-                </span>
-              ) : (
-                <Link 
-                  href={item.link} 
-                  className="hover:text-foreground transition-colors"
-                >
-                  {item.title}
+                  {item.label}
                 </Link>
+              ) : (
+                <span className="ml-1 md:ml-2 text-gray-500 dark:text-gray-400">
+                  {item.label}
+                </span>
               )}
-            </li>
-          )
-        })}
+            </div>
+          </li>
+        ))}
       </ol>
     </nav>
-  )
+  );
 }

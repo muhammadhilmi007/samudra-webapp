@@ -1,31 +1,44 @@
 // app/pengambilan/page.js
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { fetchPickups, updatePickupStatus } from '@/lib/redux/slices/pickupSlice';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import DataTable from '@/components/data-tables/data-table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/lib/hooks/use-toast'; // Fixed import path
-import StatusBadge from '@/components/shared/status-badge';
-import { formatDate } from '@/lib/utils'; // Fixed import to use named export
-import Link from 'next/link';
-import { PlusCircle, FileDown } from 'lucide-react';
-import { Breadcrumbs } from '@/components/shared/breadcrumbs';
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchPickups,
+  updatePickupStatus,
+} from "@/lib/redux/slices/pickupSlice";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import DataTable from "@/components/data-tables/data-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/lib/hooks/use-toast"; // Fixed import path
+import StatusBadge from "@/components/shared/status-badge";
+import { formatDate } from "@/lib/utils"; // Fixed import to use named export
+import Link from "next/link";
+import { PlusCircle, FileDown } from "lucide-react";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
+import Header from "@/components/layout/header";
+import Sidebar from "@/components/layout/sidebar";
 
 export default function PickupsPage() {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { pickups, loading, error } = useSelector(state => state.pickup);
-  const [activeTab, setActiveTab] = useState('all');
-  
+  const { pickups, loading, error } = useSelector((state) => state.pickup);
+  const [activeTab, setActiveTab] = useState("all");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Mock user data (replace with actual auth logic)
+  const mockUser = {
+    nama: "Admin User",
+    jabatan: "Administrator",
+    email: "admin@samudra-erp.com",
+  };
+
   useEffect(() => {
     dispatch(fetchPickups());
   }, [dispatch]);
-  
+
   const handleStatusChange = async (id, status) => {
     try {
       await dispatch(updatePickupStatus({ id, status })).unwrap();
@@ -41,13 +54,16 @@ export default function PickupsPage() {
       });
     }
   };
-  
+
   const columns = [
     {
       accessorKey: "noPengambilan",
       header: "No Pengambilan",
       cell: ({ row }) => (
-        <Link href={`/pengambilan/${row.original._id}`} className="font-medium hover:underline">
+        <Link
+          href={`/pengambilan/${row.original._id}`}
+          className="font-medium hover:underline"
+        >
           {row.original.noPengambilan}
         </Link>
       ),
@@ -78,7 +94,9 @@ export default function PickupsPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} type="pickup" />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.status} type="pickup" />
+      ),
     },
     {
       id: "actions",
@@ -86,11 +104,13 @@ export default function PickupsPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Link href={`/pengambilan/${row.original._id}`}>
-            <Button variant="ghost" size="sm">Detail</Button>
+            <Button variant="ghost" size="sm">
+              Detail
+            </Button>
           </Link>
           {row.original.status === "PENDING" && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => handleStatusChange(row.original._id, "BERANGKAT")}
             >
@@ -98,8 +118,8 @@ export default function PickupsPage() {
             </Button>
           )}
           {row.original.status === "BERANGKAT" && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => handleStatusChange(row.original._id, "SELESAI")}
             >
@@ -110,17 +130,22 @@ export default function PickupsPage() {
       ),
     },
   ];
-  
+
+  const handleLogout = () => {
+    // Implement logout functionality
+    console.log("Logging out...");
+  };
+
   // Filter data based on active tab
-  const filteredData = pickups.filter(item => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'pending') return item.status === 'PENDING';
-    if (activeTab === 'berangkat') return item.status === 'BERANGKAT';
-    if (activeTab === 'selesai') return item.status === 'SELESAI';
-    if (activeTab === 'cancelled') return item.status === 'CANCELLED';
+  const filteredData = pickups.filter((item) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "pending") return item.status === "PENDING";
+    if (activeTab === "berangkat") return item.status === "BERANGKAT";
+    if (activeTab === "selesai") return item.status === "SELESAI";
+    if (activeTab === "cancelled") return item.status === "CANCELLED";
     return true;
   });
-  
+
   const breadcrumbItems = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Pengambilan", href: "/pengambilan" },
@@ -132,9 +157,7 @@ export default function PickupsPage() {
         <Breadcrumbs items={breadcrumbItems} />
         <Card className="mt-4">
           <CardContent className="pt-6">
-            <div className="text-center text-red-500">
-              Error: {error}
-            </div>
+            <div className="text-center text-red-500">Error: {error}</div>
           </CardContent>
         </Card>
       </div>
@@ -142,55 +165,85 @@ export default function PickupsPage() {
   }
 
   return (
-    <div>
-      <Breadcrumbs items={breadcrumbItems} />
-      
-      <div className="flex justify-between items-center mb-4 mt-4">
-        <h1 className="text-2xl font-bold">Pengambilan Barang</h1>
-        <div className="flex gap-2">
-          <Button asChild>
-            <Link href="/pengambilan/tambah">
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Tambah Pengambilan
-            </Link>
-          </Button>
-          <Button variant="outline">
-            <FileDown className="mr-2 h-4 w-4" />
-            Ekspor
-          </Button>
-        </div>
+    <div className="flex h-screen overflow-hidden bg-gray-50">
+      {/* Sidebar */}
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={mockUser}
+      />
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header */}
+        <Header
+          onMenuButtonClick={() => setSidebarOpen(true)}
+          user={mockUser}
+          onLogout={handleLogout}
+        />
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="mx-auto max-w-1xl space-y-6">
+            <Breadcrumbs items={breadcrumbItems} />
+
+            <div className="flex justify-between items-center mb-4 mt-4">
+              <h1 className="text-2xl font-bold">Pengambilan Barang</h1>
+              <div className="flex gap-2">
+                <Button asChild>
+                  <Link href="/pengambilan/tambah">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Tambah Pengambilan
+                  </Link>
+                </Button>
+                <Button variant="outline">
+                  <FileDown className="mr-2 h-4 w-4" />
+                  Ekspor
+                </Button>
+              </div>
+            </div>
+
+            <Card>
+              <CardHeader className="pb-1">
+                <CardTitle>Daftar Pengambilan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Tabs
+                  defaultValue="all"
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  className="mt-2"
+                >
+                  <TabsList>
+                    <TabsTrigger value="all">Semua</TabsTrigger>
+                    <TabsTrigger value="pending">
+                      Pending
+                      <Badge variant="secondary" className="ml-2">
+                        {
+                          pickups.filter((item) => item.status === "PENDING")
+                            .length
+                        }
+                      </Badge>
+                    </TabsTrigger>
+                    <TabsTrigger value="berangkat">Berangkat</TabsTrigger>
+                    <TabsTrigger value="selesai">Selesai</TabsTrigger>
+                    <TabsTrigger value="cancelled">Dibatalkan</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value={activeTab} className="p-0 mt-2">
+                    <DataTable
+                      columns={columns}
+                      data={filteredData}
+                      loading={loading}
+                      searchPlaceholder="Cari pengambilan..."
+                      searchColumn="noPengambilan"
+                    />
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+          </div>
+        </main>
       </div>
-      
-      <Card>
-        <CardHeader className="pb-1">
-          <CardTitle>Daftar Pengambilan</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-2">
-            <TabsList>
-              <TabsTrigger value="all">Semua</TabsTrigger>
-              <TabsTrigger value="pending">
-                Pending
-                <Badge variant="secondary" className="ml-2">
-                  {pickups.filter(item => item.status === 'PENDING').length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="berangkat">Berangkat</TabsTrigger>
-              <TabsTrigger value="selesai">Selesai</TabsTrigger>
-              <TabsTrigger value="cancelled">Dibatalkan</TabsTrigger>
-            </TabsList>
-            <TabsContent value={activeTab} className="p-0 mt-2">
-              <DataTable
-                columns={columns}
-                data={filteredData}
-                loading={loading}
-                searchPlaceholder="Cari pengambilan..."
-                searchColumn="noPengambilan"
-              />
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
     </div>
   );
 }
