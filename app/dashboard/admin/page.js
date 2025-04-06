@@ -8,7 +8,7 @@ import {
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell 
 } from 'recharts';
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Package, Users, Truck } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/hooks/use-toast';
 
 export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);

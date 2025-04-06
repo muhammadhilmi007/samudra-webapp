@@ -13,6 +13,7 @@ import {
   fetchVehicleById,
   uploadVehiclePhoto,
   uploadVehicleDocument,
+  clearError,
 } from "@/lib/redux/slices/vehicleSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
 import { fetchEmployees } from "@/lib/redux/slices/pegawaiSlice";
@@ -111,7 +112,9 @@ export default function VehicleForm({ vehicleId }) {
     (state) => state.vehicle
   );
   const { branches } = useSelector((state) => state.cabang);
-  const { drivers } = useSelector((state) => state.pegawai);
+  const { employees, loading: employeesLoading } = useSelector(
+    (state) => state.pegawai
+  );
 
   const [isEditing, setIsEditing] = useState(!!vehicleId);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
@@ -155,11 +158,15 @@ export default function VehicleForm({ vehicleId }) {
   useEffect(() => {
     dispatch(fetchBranches());
     dispatch(fetchEmployees());
-  
-  if (isEditing && vehicleId) {
-    dispatch(fetchVehicleById(vehicleId));
-  }
-}, [dispatch, isEditing, vehicleId]);
+
+    if (isEditing && vehicleId) {
+      dispatch(fetchVehicleById(vehicleId));
+    }
+  }, [dispatch, isEditing, vehicleId]);
+
+  useEffect(() => {
+    console.log("All employees:", employees);
+  }, [employees]);
 
   // Populate form when data is fetched
   useEffect(() => {
@@ -254,6 +261,37 @@ export default function VehicleForm({ vehicleId }) {
     }
   }, [error, success, toast, form, isEditing, router]);
 
+  const handleDriverPhotoUpload = async (id, file) => {
+    if (!file) return;
+
+    setIsUploadingDriverPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("photo", file);
+
+      await dispatch(
+        uploadVehiclePhoto({
+          id: id,
+          photoType: "driver",
+          formData,
+        })
+      ).unwrap();
+
+      toast({
+        title: "Foto supir berhasil diunggah",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Gagal mengunggah foto supir",
+        description: error.message || "Terjadi kesalahan saat mengunggah",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingDriverPhoto(false);
+    }
+  };
+
   // Handle driver photo upload
   const handleDriverPhotoChange = (files) => {
     if (files && files.length > 0) {
@@ -313,90 +351,242 @@ export default function VehicleForm({ vehicleId }) {
   // Handle form submission
   const onSubmit = async (data) => {
     try {
+      // Clear any existing errors before starting
+      dispatch(clearError());
+
       let vehicleData;
+      let response;
 
       if (isEditing) {
         // Update vehicle
-        const response = await dispatch(
-          updateVehicle({
-            id: vehicleId,
-            vehicleData: data,
-          })
-        ).unwrap();
+        try {
+          response = await dispatch(
+            updateVehicle({
+              id: vehicleId,
+              vehicleData: data,
+            })
+          ).unwrap();
+        } catch (error) {
+          console.error("Error updating vehicle:", error);
+          // Properly extract error message
+          const errorMessage =
+            error?.message ||
+            error?.error ||
+            "Gagal mengupdate kendaraan. Silakan coba lagi.";
+          throw new Error(errorMessage);
+        }
 
-        vehicleData = response.data;
+        // Properly handle different response structures
+        if (response?.data?.data) {
+          vehicleData = response.data.data;
+        } else if (response?.data) {
+          vehicleData = response.data;
+        } else if (response) {
+          vehicleData = response;
+        } else {
+          throw new Error("Invalid response structure from server");
+        }
       } else {
         // Create vehicle
-        const response = await dispatch(createVehicle(data)).unwrap();
-        vehicleData = response.data;
+        try {
+          response = await dispatch(createVehicle(data)).unwrap();
+        } catch (error) {
+          console.error("Error creating vehicle:", error);
+          const errorMessage =
+            error?.message ||
+            error?.error ||
+            "Gagal membuat kendaraan baru. Silakan coba lagi.";
+          throw new Error(errorMessage);
+        }
+
+        if (response?.data?.data) {
+          vehicleData = response.data.data;
+        } else if (response?.data) {
+          vehicleData = response.data;
+        } else if (response) {
+          vehicleData = response;
+        } else {
+          throw new Error("Invalid response structure from server");
+        }
       }
 
       // Upload photos if available
       if (vehicleData && vehicleData._id) {
         const vehicleId = vehicleData._id;
 
-        // Upload driver photo
-        if (driverPhotoFile) {
-          setIsUploadingDriverPhoto(true);
-          const formData = new FormData();
-          formData.append("photo", driverPhotoFile);
-          await dispatch(
-            uploadVehiclePhoto({
-              id: vehicleId,
-              photoType: "driver",
-              formData,
-            })
-          );
-          setIsUploadingDriverPhoto(false);
-        }
+        // Handle file uploads
+        const uploadFiles = async () => {
+          const uploadErrors = [];
 
-        // Upload driver ID card
-        if (driverIDCardFile) {
-          setIsUploadingDriverIDCard(true);
-          const formData = new FormData();
-          formData.append("document", driverIDCardFile);
-          await dispatch(
-            uploadVehicleDocument({
-              id: vehicleId,
-              documentType: "driverIDCard",
-              formData,
-            })
-          );
-          setIsUploadingDriverIDCard(false);
-        }
+          // Upload driver photo
+          if (driverPhotoFile) {
+            setIsUploadingDriverPhoto(true);
+            try {
+              const formData = new FormData();
+              formData.append("photo", driverPhotoFile);
+              formData.append("photoType", "driver");
+              const response = await dispatch(
+                uploadVehiclePhoto({
+                  id: vehicleId,
+                  formData,
+                })
+              ).unwrap();
 
-        // Upload helper photo
-        if (helperPhotoFile) {
-          setIsUploadingHelperPhoto(true);
-          const formData = new FormData();
-          formData.append("photo", helperPhotoFile);
-          await dispatch(
-            uploadVehiclePhoto({
-              id: vehicleId,
-              photoType: "helper",
-              formData,
-            })
-          );
-          setIsUploadingHelperPhoto(false);
-        }
+              if (!response?.data) {
+                throw new Error("Invalid response structure from server");
+              }
+            } catch (error) {
+              uploadErrors.push(
+                `Gagal mengunggah foto supir: ${
+                  error.message || "Unknown error"
+                }`
+              );
+            } finally {
+              setIsUploadingDriverPhoto(false);
+            }
+          }
 
-        // Upload helper ID card
-        if (helperIDCardFile) {
-          setIsUploadingHelperIDCard(true);
-          const formData = new FormData();
-          formData.append("document", helperIDCardFile);
-          await dispatch(
-            uploadVehicleDocument({
-              id: vehicleId,
-              documentType: "helperIDCard",
-              formData,
-            })
-          );
-          setIsUploadingHelperIDCard(false);
-        }
+          // Upload driver ID card
+          if (driverIDCardFile) {
+            setIsUploadingDriverIDCard(true);
+            try {
+              const formData = new FormData();
+              formData.append("document", driverIDCardFile);
+              const response = await dispatch(
+                uploadVehicleDocument({
+                  id: vehicleId,
+                  documentType: "driverIDCard",
+                  formData,
+                })
+              ).unwrap();
+
+              if (!response?.data) {
+                throw new Error("Invalid response structure from server");
+              }
+            } catch (error) {
+              uploadErrors.push(
+                `Gagal mengunggah KTP supir: ${
+                  error.message || "Unknown error"
+                }`
+              );
+            } finally {
+              setIsUploadingDriverIDCard(false);
+            }
+          }
+
+          // Upload helper photo
+          if (helperPhotoFile) {
+            setIsUploadingHelperPhoto(true);
+            try {
+              const formData = new FormData();
+              formData.append("photo", helperPhotoFile);
+              formData.append("photoType", "helper");
+              const response = await dispatch(
+                uploadVehiclePhoto({
+                  id: vehicleId,
+                  formData,
+                })
+              ).unwrap();
+
+              if (!response?.data) {
+                throw new Error("Invalid response structure from server");
+              }
+            } catch (error) {
+              uploadErrors.push(
+                `Gagal mengunggah foto kenek: ${
+                  error.message || "Unknown error"
+                }`
+              );
+            } finally {
+              setIsUploadingHelperPhoto(false);
+            }
+          }
+
+          // Upload helper ID card
+          if (helperIDCardFile) {
+            setIsUploadingHelperIDCard(true);
+            try {
+              const formData = new FormData();
+              formData.append("document", helperIDCardFile);
+              formData.append("documentType", "helperIDCard");
+              const response = await dispatch(
+                uploadVehicleDocument({
+                  id: vehicleId,
+                  formData,
+                })
+              ).unwrap();
+
+              if (!response?.data) {
+                throw new Error("Invalid response structure from server");
+              }
+            } catch (error) {
+              uploadErrors.push(
+                `Gagal mengunggah KTP kenek: ${
+                  error.message || "Unknown error"
+                }`
+              );
+            } finally {
+              setIsUploadingHelperIDCard(false);
+            }
+          }
+
+          // If there were any upload errors, show them all in one toast
+          if (uploadErrors.length > 0) {
+            toast({
+              title: "Error",
+              description: uploadErrors.join("\n"),
+              variant: "destructive",
+            });
+          }
+        };
+
+        // Execute file uploads
+        await uploadFiles();
       }
     } catch (error) {
       console.error("Error submitting form:", error);
+
+      // Enhanced error handling with more detailed messages
+      let errorMessage;
+
+      if (error.response?.data?.message) {
+        // API error with message
+        errorMessage = error.response.data.message;
+      } else if (error.response?.status === 401) {
+        errorMessage = "Sesi telah berakhir. Silakan login kembali.";
+      } else if (error.response?.status === 403) {
+        errorMessage = "Anda tidak memiliki akses untuk melakukan operasi ini.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Data kendaraan tidak ditemukan.";
+      } else if (error.response?.status === 422) {
+        errorMessage =
+          "Data yang dimasukkan tidak valid. Silakan periksa kembali.";
+      } else if (error.message) {
+        // Custom error message
+        errorMessage = error.message;
+      } else {
+        // Generic error message
+        errorMessage = isEditing
+          ? "Gagal mengupdate kendaraan. Silakan coba lagi."
+          : "Gagal membuat kendaraan baru. Silakan coba lagi.";
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      // Set form error state with detailed message
+      form.setError("root", {
+        type: "manual",
+        message: errorMessage,
+      });
+
+      // Clear loading state
+      if (isEditing) {
+        dispatch(clearError());
+      }
     }
   };
 
@@ -415,29 +605,36 @@ export default function VehicleForm({ vehicleId }) {
     }
   };
 
-  // Filter drivers
-  const filteredDrivers =
-    drivers?.filter(
-      (driver) =>
-        driver.jabatan?.toLowerCase().includes("supir") ||
-        driver.jabatan?.toLowerCase().includes("driver")
-    ) || [];
+  // Filter drivers with additional error handling
+  const filteredDrivers = Array.isArray(employees)
+    ? employees.filter(
+        (employee) =>
+          employee?.jabatan?.toLowerCase().includes("supir") ||
+          employee?.jabatan?.toLowerCase().includes("driver")
+      )
+    : [];
 
-  // Filter helpers
-  const filteredHelpers =
-    drivers?.filter(
-      (driver) =>
-        driver.jabatan?.toLowerCase().includes("kenek") ||
-        driver.jabatan?.toLowerCase().includes("helper") ||
-        driver.jabatan?.toLowerCase().includes("assistant")
-    ) || [];
+  // Filter helpers with additional error handling
+  const filteredHelpers = Array.isArray(employees)
+    ? employees.filter(
+        (employee) =>
+          employee?.jabatan?.toLowerCase().includes("kenek") ||
+          employee?.jabatan?.toLowerCase().includes("helper") ||
+          employee?.jabatan?.toLowerCase().includes("assistant")
+      )
+    : [];
 
-  // components/forms/vehicle-form.jsx (continued)
   const isUploading =
     isUploadingDriverPhoto ||
     isUploadingDriverIDCard ||
     isUploadingHelperPhoto ||
     isUploadingHelperIDCard;
+
+  // Add this to check what's being filtered
+  useEffect(() => {
+    console.log("Filtered drivers:", filteredDrivers);
+    console.log("Filtered helpers:", filteredHelpers);
+  }, [filteredDrivers, filteredHelpers]);
 
   return (
     <div className="space-y-6">
@@ -553,8 +750,7 @@ export default function VehicleForm({ vehicleId }) {
                           <FormLabel>Tipe Kendaraan *</FormLabel>
                           <Select
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            value={field.value}
+                            value={field.value || ""}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -657,8 +853,7 @@ export default function VehicleForm({ vehicleId }) {
                         <FormLabel>Supir *</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
+                          value={field.value || ""}
                         >
                           <FormControl>
                             <SelectTrigger>
@@ -792,8 +987,7 @@ export default function VehicleForm({ vehicleId }) {
                         <FormLabel>Kenek (Opsional)</FormLabel>
                         <Select
                           onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          value={field.value}
+                          value={field.value || ""}
                         >
                           <FormControl>
                             <SelectTrigger>

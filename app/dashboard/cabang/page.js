@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchBranchDashboardStats } from '@/lib/redux/slices/dashboardSlice';
+import { fetchBranches } from '@/lib/redux/slices/cabangSlice';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   BarChart,
@@ -41,7 +42,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export default function BranchDashboardPage() {
   const dispatch = useDispatch();
   const { branchStats, loading, error } = useSelector(state => state.dashboard);
-  const { branches } = useSelector(state => state.branch);
+  const { branches } = useSelector(state => state.cabang);
+
+  useEffect(() => {
+    dispatch(fetchBranches());
+  }, [dispatch]);
   const { currentUser } = useSelector(state => state.auth);
   
   const [selectedBranchId, setSelectedBranchId] = useState('');

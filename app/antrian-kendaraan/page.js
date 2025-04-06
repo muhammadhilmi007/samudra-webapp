@@ -1,12 +1,15 @@
-// app/kendaraan/page.js
+// app/antrian-kendaraan/page.js
 "use client";
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import Link from "next/link";
-import { fetchVehicles, deleteVehicle } from "@/lib/redux/slices/vehicleSlice";
+import {
+  fetchVehicleQueues,
+  deleteVehicleQueue,
+  updateVehicleQueueStatus,
+} from "@/lib/redux/slices/vehicleQueueSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
-import { fetchEmployees } from "@/lib/redux/slices/pegawaiSlice";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -32,10 +35,10 @@ import {
   Trash2,
   Eye,
   Loader2,
-  Truck,
   ArrowUpDown,
   Filter,
   X,
+  RefreshCw,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -52,20 +55,26 @@ import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-export default function VehicleListPage() {
+export default function VehicleQueueListPage() {
   const dispatch = useDispatch();
-  const { vehicles, loading, error, success } = useSelector((state) => state.vehicle);
+  const { vehicleQueues, loading, error, success } = useSelector(
+    (state) => state.vehicleQueue
+  );
   const { branches } = useSelector((state) => state.cabang);
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [sortField, setSortField] = useState("noPolisi");
+  const [filterBranch, setFilterBranch] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [sortField, setSortField] = useState("urutan");
   const [sortDirection, setSortDirection] = useState("asc");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [vehicleToDelete, setVehicleToDelete] = useState(null);
+  const [queueToDelete, setQueueToDelete] = useState(null);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [queueToUpdate, setQueueToUpdate] = useState(null);
+  const [newStatus, setNewStatus] = useState("");
+  const [prevSuccess, setPrevSuccess] = useState(false);
 
   // Mock user data (replace with actual auth logic)
   const mockUser = {
@@ -76,13 +85,12 @@ export default function VehicleListPage() {
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/dashboard" },
-    { title: "Kendaraan", link: "/kendaraan", active: true },
+    { title: "Antrian Kendaraan", link: "/antrian-kendaraan", active: true },
   ];
 
   useEffect(() => {
-    dispatch(fetchVehicles());
+    dispatch(fetchVehicleQueues());
     dispatch(fetchBranches());
-    dispatch(fetchEmployees());
   }, [dispatch]);
 
   useEffect(() => {
@@ -94,18 +102,25 @@ export default function VehicleListPage() {
       });
     }
 
-    if (success) {
+    if (success && !prevSuccess) {
       toast({
         title: "Berhasil",
-        description: "Operasi kendaraan berhasil dilakukan",
+        description: "Operasi antrian kendaraan berhasil dilakukan",
         variant: "success",
       });
 
-      if (vehicleToDelete) {
-        setVehicleToDelete(null);
+      if (queueToDelete) {
+        setQueueToDelete(null);
+      }
+
+      if (queueToUpdate) {
+        setQueueToUpdate(null);
       }
     }
-  }, [error, success, toast, vehicleToDelete]);
+
+    // Update previous success state
+    setPrevSuccess(success);
+  }, [error, success, toast, queueToDelete, queueToUpdate]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -116,25 +131,39 @@ export default function VehicleListPage() {
     }
   };
 
-  const handleDeleteClick = (vehicle) => {
-    setVehicleToDelete(vehicle);
+  const handleDeleteClick = (queue) => {
+    setQueueToDelete(queue);
     setDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
-    if (vehicleToDelete) {
-      await dispatch(deleteVehicle(vehicleToDelete._id));
+    if (queueToDelete) {
+      await dispatch(deleteVehicleQueue(queueToDelete._id));
       setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleStatusClick = (queue) => {
+    setQueueToUpdate(queue);
+    setNewStatus(queue.status);
+    setStatusDialogOpen(true);
+  };
+
+  const handleConfirmStatusUpdate = async () => {
+    if (queueToUpdate && newStatus) {
+      await dispatch(
+        updateVehicleQueueStatus({ id: queueToUpdate._id, status: newStatus })
+      );
+      setStatusDialogOpen(false);
     }
   };
 
   const handleClearFilters = () => {
     setSearchQuery("");
-    setFilterBranch("");
-    setFilterType("");
-    setSortField("noPolisi");
+    setFilterBranch("all");
+    setFilterStatus("all");
+    setSortField("urutan");
     setSortDirection("asc");
-    dispatch(fetchVehicles());
   };
 
   // Find branch name by id
@@ -143,43 +172,73 @@ export default function VehicleListPage() {
     return branch ? branch.namaCabang : "-";
   };
 
-  // Format vehicle type for display
-  const formatVehicleType = (type) => {
-    const typeMap = {
-      lansir: { label: "Lansir", variant: "success" },
-      antar_cabang: { label: "Antar Cabang", variant: "info" },
+  // Format queue status for display
+  const formatQueueStatus = (status) => {
+    const statusMap = {
+      MENUNGGU: { label: "Menunggu", variant: "warning" },
+      LANSIR: { label: "Lansir", variant: "info" },
+      KEMBALI: { label: "Kembali", variant: "success" },
     };
 
-    const typeInfo = typeMap[type] || {
-      label: type,
+    const statusInfo = statusMap[status] || {
+      label: status,
       variant: "secondary",
     };
 
-    return <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>;
+    return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
   // Filter and sort data
-  const filteredVehicles = vehicles.filter((vehicle) => {
+  const filteredQueues = vehicleQueues.filter((queue) => {
+    // Check if kendaraanId exists and has fields we want to search
+    const vehicleMatch =
+      queue.kendaraanId &&
+      (queue.kendaraanId.noPolisi
+        ?.toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+        queue.kendaraanId.namaKendaraan
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase()));
+
+    // Check if driver or helper names match
+    const driverMatch = queue.supirId?.nama
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const helperMatch = queue.kenekId?.nama
+      ?.toLowerCase()
+      .includes(searchQuery.toLowerCase());
+
     const matchesSearch =
-      vehicle.noPolisi?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      vehicle.namaKendaraan?.toLowerCase().includes(searchQuery.toLowerCase());
+      vehicleMatch || driverMatch || helperMatch || !searchQuery;
+    const matchesBranch =
+      !filterBranch ||
+      filterBranch === "all" ||
+      queue.cabangId === filterBranch;
+    const matchesStatus =
+      !filterStatus || filterStatus === "all" || queue.status === filterStatus;
 
-    const matchesBranch = filterBranch ? vehicle.cabangId === filterBranch : true;
-
-    const matchesType = filterType ? vehicle.tipe === filterType : true;
-
-    return matchesSearch && matchesBranch && matchesType;
+    return matchesSearch && matchesBranch && matchesStatus;
   });
 
   // Sort data
-  const sortedVehicles = [...filteredVehicles].sort((a, b) => {
-    let valueA = a[sortField];
-    let valueB = b[sortField];
+  const sortedQueues = [...filteredQueues].sort((a, b) => {
+    let valueA, valueB;
 
-    // Handle nested fields
-    if (sortField === "cabangId") {
+    if (sortField === "kendaraan") {
+      valueA = a.kendaraanId?.namaKendaraan || a.kendaraanId?.noPolisi || "";
+      valueB = b.kendaraanId?.namaKendaraan || b.kendaraanId?.noPolisi || "";
+    } else if (sortField === "cabangId") {
       valueA = getBranchName(a.cabangId);
       valueB = getBranchName(b.cabangId);
+    } else if (sortField === "status") {
+      valueA = a.status || "";
+      valueB = b.status || "";
+    } else if (sortField === "supir") {
+      valueA = a.supirId?.nama || "";
+      valueB = b.supirId?.nama || "";
+    } else {
+      valueA = a[sortField];
+      valueB = b[sortField];
     }
 
     // Handle case-insensitive string comparison
@@ -225,16 +284,16 @@ export default function VehicleListPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">
-                  Manajemen Kendaraan
+                  Manajemen Antrian Kendaraan
                 </h1>
                 <p className="text-muted-foreground">
-                  Kelola data kendaraan dan armada perusahaan
+                  Kelola antrian kendaraan lansir dalam sistem
                 </p>
               </div>
-              <Link href="/kendaraan/tambah">
+              <Link href="/antrian-kendaraan/tambah">
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Tambah Kendaraan
+                  Tambah Antrian
                 </Button>
               </Link>
             </div>
@@ -245,7 +304,7 @@ export default function VehicleListPage() {
                   <div className="relative">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
                     <Input
-                      placeholder="Cari nomor polisi, nama kendaraan..."
+                      placeholder="Cari nomor polisi, nama kendaraan, supir..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9"
@@ -270,19 +329,24 @@ export default function VehicleListPage() {
                 </div>
 
                 <div className="w-full md:w-48">
-                  <Select value={filterType} onValueChange={setFilterType}>
+                  <Select value={filterStatus} onValueChange={setFilterStatus}>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filter tipe" />
+                      <SelectValue placeholder="Filter status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Semua Tipe</SelectItem>
-                      <SelectItem value="lansir">Lansir</SelectItem>
-                      <SelectItem value="antar_cabang">Antar Cabang</SelectItem>
+                      <SelectItem value="all">Semua Status</SelectItem>
+                      <SelectItem value="MENUNGGU">Menunggu</SelectItem>
+                      <SelectItem value="LANSIR">Lansir</SelectItem>
+                      <SelectItem value="KEMBALI">Kembali</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
-                {(searchQuery || filterBranch || filterType || sortField !== "noPolisi" || sortDirection !== "asc") && (
+                {(searchQuery ||
+                  filterBranch ||
+                  filterStatus ||
+                  sortField !== "urutan" ||
+                  sortDirection !== "asc") && (
                   <Button
                     variant="ghost"
                     onClick={handleClearFilters}
@@ -301,80 +365,109 @@ export default function VehicleListPage() {
                       <TableRow>
                         <TableHead
                           className="cursor-pointer"
-                          onClick={() => handleSort("noPolisi")}
+                          onClick={() => handleSort("urutan")}
                         >
                           <div className="flex items-center">
-                            Nomor Polisi
+                            No. Urut
                             <ArrowUpDown className="ml-1 h-4 w-4" />
                           </div>
                         </TableHead>
                         <TableHead
                           className="cursor-pointer"
-                          onClick={() => handleSort("namaKendaraan")}
+                          onClick={() => handleSort("kendaraan")}
                         >
                           <div className="flex items-center">
-                            Nama Kendaraan
+                            Kendaraan
                             <ArrowUpDown className="ml-1 h-4 w-4" />
                           </div>
                         </TableHead>
-                        <TableHead>Supir</TableHead>
-                        <TableHead>Cabang</TableHead>
-                        <TableHead>Tipe</TableHead>
+                        <TableHead
+                          className="cursor-pointer"
+                          onClick={() => handleSort("supir")}
+                        >
+                          <div className="flex items-center">
+                            Supir
+                            <ArrowUpDown className="ml-1 h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead>Kenek</TableHead>
+                        <TableHead
+                          className="cursor-pointer"
+                          onClick={() => handleSort("cabangId")}
+                        >
+                          <div className="flex items-center">
+                            Cabang
+                            <ArrowUpDown className="ml-1 h-4 w-4" />
+                          </div>
+                        </TableHead>
+                        <TableHead
+                          className="cursor-pointer"
+                          onClick={() => handleSort("status")}
+                        >
+                          <div className="flex items-center">
+                            Status
+                            <ArrowUpDown className="ml-1 h-4 w-4" />
+                          </div>
+                        </TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {loading ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
+                          <TableCell colSpan={7} className="h-24 text-center">
                             <div className="flex justify-center items-center">
                               <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
                               <span className="ml-2">Memuat data...</span>
                             </div>
                           </TableCell>
                         </TableRow>
-                      ) : sortedVehicles.length === 0 ? (
+                      ) : sortedQueues.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center">
-                            {searchQuery || filterBranch || filterType ? (
+                          <TableCell colSpan={7} className="h-24 text-center">
+                            {searchQuery || filterBranch || filterStatus ? (
                               <div>
-                                Tidak ada kendaraan yang cocok dengan filter yang
-                                dipilih
+                                Tidak ada antrian kendaraan yang cocok dengan
+                                filter yang dipilih
                               </div>
                             ) : (
-                              <div>Belum ada data kendaraan</div>
+                              <div>Belum ada data antrian kendaraan</div>
                             )}
                           </TableCell>
                         </TableRow>
                       ) : (
-                        sortedVehicles.map((vehicle) => (
-                          <TableRow key={vehicle._id}>
+                        sortedQueues.map((queue) => (
+                          <TableRow key={queue._id}>
                             <TableCell>
-                              <div className="font-medium">{vehicle.noPolisi}</div>
+                              <div className="font-medium">{queue.urutan}</div>
                             </TableCell>
                             <TableCell>
                               <div className="font-medium">
-                                {vehicle.namaKendaraan}
+                                {queue.kendaraanId?.namaKendaraan || "-"}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {queue.kendaraanId?.noPolisi || "-"}
                               </div>
                             </TableCell>
+                            <TableCell>{queue.supirId?.nama || "-"}</TableCell>
+                            <TableCell>{queue.kenekId?.nama || "-"}</TableCell>
                             <TableCell>
-                              {vehicle.supirId?.nama || "-"}
+                              {getBranchName(queue.cabangId)}
                             </TableCell>
                             <TableCell>
-                              {getBranchName(vehicle.cabangId)}
-                            </TableCell>
-                            <TableCell>
-                              {formatVehicleType(vehicle.tipe)}
+                              {formatQueueStatus(queue.status)}
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Link href={`/kendaraan/${vehicle._id}`}>
-                                  <Button variant="outline" size="sm">
-                                    <Eye className="h-4 w-4" />
-                                    <span className="sr-only">Lihat</span>
-                                  </Button>
-                                </Link>
-                                <Link href={`/kendaraan/${vehicle._id}`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleStatusClick(queue)}
+                                >
+                                  <RefreshCw className="h-4 w-4" />
+                                  <span className="sr-only">Update Status</span>
+                                </Button>
+                                <Link href={`/antrian-kendaraan/${queue._id}`}>
                                   <Button variant="outline" size="sm">
                                     <Edit className="h-4 w-4" />
                                     <span className="sr-only">Edit</span>
@@ -383,7 +476,7 @@ export default function VehicleListPage() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteClick(vehicle)}
+                                  onClick={() => handleDeleteClick(queue)}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   <span className="sr-only">Hapus</span>
@@ -406,11 +499,13 @@ export default function VehicleListPage() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Konfirmasi Hapus Kendaraan</AlertDialogTitle>
+            <AlertDialogTitle>
+              Konfirmasi Hapus Antrian Kendaraan
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus kendaraan{" "}
+              Apakah Anda yakin ingin menghapus antrian kendaraan{" "}
               <span className="font-semibold">
-                {vehicleToDelete?.noPolisi} ({vehicleToDelete?.namaKendaraan})
+                {queueToDelete?.kendaraanId?.noPolisi || "yang dipilih"}
               </span>
               ? Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
@@ -422,6 +517,41 @@ export default function VehicleListPage() {
               className="bg-red-600 hover:bg-red-700"
             >
               Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Update Status Dialog */}
+      <AlertDialog open={statusDialogOpen} onOpenChange={setStatusDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Update Status Antrian</AlertDialogTitle>
+            <AlertDialogDescription>
+              Pilih status baru untuk kendaraan{" "}
+              <span className="font-semibold">
+                {queueToUpdate?.kendaraanId?.noPolisi || "yang dipilih"}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-4">
+            <Select value={newStatus} onValueChange={setNewStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pilih status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="MENUNGGU">Menunggu</SelectItem>
+                <SelectItem value="LANSIR">Lansir</SelectItem>
+                <SelectItem value="KEMBALI">Kembali</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmStatusUpdate}>
+              Update Status
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

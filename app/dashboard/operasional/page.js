@@ -8,9 +8,9 @@ import {
   LineChart, Line, PieChart, Pie, Cell 
 } from 'recharts';
 import { Loader2, Package, Truck, Clock, Calendar } from 'lucide-react';
-import { Progress } from "@/components/ui/progress";
+import Progress from "@/components/ui/progress";
 import StatusBadge from '@/components/shared/status-badge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/lib/hooks/use-toast';
 
 export default function OperasionalDashboard() {
   const [loading, setLoading] = useState(true);

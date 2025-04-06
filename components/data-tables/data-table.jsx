@@ -137,12 +137,12 @@ export default function DataTable({
 
           {columns.map((column) => (
             <TableHead
-              key={column.accessorKey || column.id}
+              key={column.field || column.accessorKey || column.id}
               className={cn(
                 column.className,
                 column.sortable && "cursor-pointer hover:text-foreground"
               )}
-              onClick={() => column.sortable && handleSort(column.accessorKey || column.id)}
+              onClick={() => column.sortable && handleSort(column.field || column.accessorKey || column.id)}
             >
               <div className="flex items-center">
                 {column.header}
@@ -245,8 +245,8 @@ export default function DataTable({
         )}
 
         {columns.map((column) => (
-          <TableCell key={column.accessorKey || column.id} className={column.cellClassName}>
-            {column.render ? column.render(row, rowIndex) : row[column.accessorKey]}
+          <TableCell key={column.field || column.accessorKey || column.id} className={column.cellClassName}>
+            {column.render ? column.render(row, rowIndex) : row[column.field || column.accessorKey]}
           </TableCell>
         ))}
 

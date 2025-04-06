@@ -1,17 +1,20 @@
-"use client"
+// components/shared/loading-spinner.jsx
+"use client";
 
-export function LoadingSpinner({ size = "medium" }) {
-  const sizeClass = {
-    small: "h-4 w-4",
-    medium: "h-8 w-8",
-    large: "h-12 w-12",
+import { Loader2 } from "lucide-react";
+
+export function LoadingSpinner({ size = "md", className = "" }) {
+  const sizeClasses = {
+    sm: "h-4 w-4",
+    md: "h-8 w-8",
+    lg: "h-12 w-12",
   };
 
   return (
     <div className="flex items-center justify-center">
-      <div
-        className={`animate-spin rounded-full border-t-2 border-b-2 border-samudra-600 ${sizeClass[size]}`}
-      ></div>
+      <Loader2 
+        className={`animate-spin text-primary ${sizeClasses[size]} ${className}`} 
+      />
     </div>
   );
 }
