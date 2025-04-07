@@ -222,10 +222,33 @@ export default function EditCabangPage({ params }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (validateForm()) {
-      await dispatch(updateBranch({ id: branchId, branchData: formData }));
+  
+    if (!validateForm()) {
+      toast({
+        title: "Error",
+        description: "Mohon lengkapi semua field yang wajib diisi",
+        variant: "destructive",
+      });
+      return;
     }
+    
+    // Format data for API
+    const formattedData = {
+      ...formData,
+      divisiId: formData.divisiId.toString(),
+      // Ensure nested objects are properly formatted
+      kontakPenanggungJawab: {
+        nama: formData.kontakPenanggungJawab.nama || '',
+        telepon: formData.kontakPenanggungJawab.telepon || '',
+        email: formData.kontakPenanggungJawab.email || ''
+      }
+    };
+    
+    console.log("Updating branch data:", formattedData);
+    await dispatch(updateBranch({ 
+      id: branchId, 
+      branchData: formattedData 
+    }));
   };
 
   if (isLoading || !currentBranch) {
@@ -304,43 +327,46 @@ export default function EditCabangPage({ params }) {
                         Divisi <span className="text-red-500">*</span>
                       </Label>
                       <Select
-                        value={formData.divisiId}
-                        onValueChange={handleDivisionChange}
+                        value={formData.divisiId ? formData.divisiId.toString() : ""}
+                        onValueChange={(value) => {
+                          setFormData({
+                            ...formData,
+                            divisiId: value,
+                          });
+                          // Clear error when value is selected
+                          if (formErrors.divisiId) {
+                            setFormErrors({
+                              ...formErrors,
+                              divisiId: undefined,
+                            });
+                          }
+                        }}
                       >
                         <SelectTrigger
                           id="divisiId"
-                          className={
-                            formErrors.divisiId ? "border-red-500" : ""
-                          }
+                          className={formErrors.divisiId ? "border-red-500" : ""}
                         >
-                          <SelectValue placeholder="Pilih divisi" />
+                          <SelectValue placeholder="Pilih Divisi" />
                         </SelectTrigger>
                         <SelectContent>
-                          {divisionsLoading ? (
-                            <div className="flex items-center justify-center p-2">
-                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                              <span>Memuat divisi...</span>
-                            </div>
-                          ) : divisions.length === 0 ? (
-                            <div className="p-2 text-center text-sm">
-                              Tidak ada data divisi
-                            </div>
-                          ) : (
+                          {divisions && divisions.length > 0 ? (
                             divisions.map((division) => (
-                              <SelectItem
-                                key={division._id}
-                                value={division._id}
+                              <SelectItem 
+                                key={division._id} 
+                                value={division._id.toString()}
                               >
                                 {division.namaDivisi}
                               </SelectItem>
                             ))
+                          ) : (
+                            <SelectItem value="loading" disabled>
+                              {divisionsLoading ? "Loading..." : "Tidak ada divisi"}
+                            </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                       {formErrors.divisiId && (
-                        <p className="text-sm text-red-500">
-                          {formErrors.divisiId}
-                        </p>
+                        <p className="text-red-500 text-sm mt-1">{formErrors.divisiId}</p>
                       )}
                     </div>
 

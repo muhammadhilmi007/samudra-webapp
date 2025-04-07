@@ -147,15 +147,19 @@ export default function CabangPage() {
 
   // Filter branches based on search query and division filter
   const filteredBranches = branches.filter((branch) => {
-    const matchesSearch = branch.namaCabang
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
+    // Filter by search query
+    const matchesSearch = 
+      branch.namaCabang?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      branch.alamat?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      branch.kota?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      branch.provinsi?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Fix the division filter comparison
+    // Filter by division
     const matchesDivision = 
-      filterDivision === "all" 
-        ? true 
-        : String(branch.divisiId) === String(filterDivision);
+      filterDivision === "all" || 
+      branch.divisiId === filterDivision ||
+      branch.divisiId?._id === filterDivision ||
+      branch.divisiId?.toString() === filterDivision;
     
     return matchesSearch && matchesDivision;
   });
@@ -251,80 +255,56 @@ export default function CabangPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[50px]">No.</TableHead>
                         <TableHead>Nama Cabang</TableHead>
                         <TableHead>Divisi</TableHead>
+                        <TableHead>Alamat</TableHead>
                         <TableHead>Kota</TableHead>
                         <TableHead>Provinsi</TableHead>
-                        <TableHead>Tanggal Dibuat</TableHead>
-                        <TableHead className="text-right">Aksi</TableHead>
+                        <TableHead>Penanggung Jawab</TableHead>
+                        <TableHead>Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {loading ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="h-24 text-center">
-                            <div className="flex justify-center items-center">
-                              <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-                              <span className="ml-2">Memuat data...</span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ) : filteredBranches.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="h-24 text-center">
-                            {searchQuery || filterDivision ? (
-                              <div>
-                                Tidak ada cabang yang cocok dengan filter yang
-                                dipilih
-                              </div>
-                            ) : (
-                              <div>Belum ada data cabang</div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredBranches.map((branch, index) => (
+                      {filteredBranches.length > 0 ? (
+                        filteredBranches.map((branch) => (
                           <TableRow key={branch._id}>
-                            <TableCell className="font-medium">
-                              {index + 1}
-                            </TableCell>
-                            <TableCell>{branch.namaCabang}</TableCell>
+                            <TableCell className="font-medium">{branch.namaCabang}</TableCell>
+                            <TableCell>{getDivisionName(branch.divisiId)}</TableCell>
+                            <TableCell>{branch.alamat}</TableCell>
+                            <TableCell>{branch.kota}</TableCell>
+                            <TableCell>{branch.provinsi}</TableCell>
+                            <TableCell>{branch.kontakPenanggungJawab?.nama || "-"}</TableCell>
                             <TableCell>
-                              {!divisionsLoaded ? (
-                                <span className="text-gray-400">
-                                  Loading...
-                                </span>
-                              ) : (
-                                getDivisionName(branch.divisiId)
-                              )}
-                            </TableCell>
-                            <TableCell>{branch.kota || "-"}</TableCell>
-                            <TableCell>{branch.provinsi || "-"}</TableCell>
-                            <TableCell>
-                              {formatDate(branch.createdAt)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
+                              <div className="flex space-x-2">
                                 <Link href={`/cabang/${branch._id}`}>
-                                  <Button variant="outline" size="sm">
+                                  <Button variant="outline" size="icon">
                                     <Edit className="h-4 w-4" />
-                                    <span className="sr-only">Edit</span>
                                   </Button>
                                 </Link>
                                 <Button
                                   variant="outline"
-                                  size="sm"
+                                  size="icon"
                                   onClick={() => handleDeleteClick(branch)}
-                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
                                 >
                                   <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Delete</span>
                                 </Button>
                               </div>
                             </TableCell>
                           </TableRow>
                         ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-4">
+                            {loading ? (
+                              <div className="flex justify-center items-center">
+                                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                <span>Memuat data...</span>
+                              </div>
+                            ) : (
+                              "Tidak ada data cabang"
+                            )}
+                          </TableCell>
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
