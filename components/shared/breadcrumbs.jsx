@@ -9,11 +9,11 @@ export function Breadcrumbs({ items = [], className = "" }) {
     <nav className={`mb-6 ${className}`}>
       <ol className="flex items-center space-x-2 text-sm text-muted-foreground">
         {items.map((item, index) => (
-          <li key={item.link} className="flex items-center">
+          <li key={`${item.link}-${index}`} className="flex items-center">
             {index !== 0 && (
               <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground" />
             )}
-            {item.active ? (
+            {item.active || !item.link ? (
               <span className="font-medium text-foreground">{item.title}</span>
             ) : (
               <Link

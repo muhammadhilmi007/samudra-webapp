@@ -52,7 +52,7 @@ export default function CabangPage() {
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterDivision, setFilterDivision] = useState("");
+  const [filterDivision, setFilterDivision] = useState("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [branchToDelete, setBranchToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -67,12 +67,19 @@ export default function CabangPage() {
 
   useEffect(() => {
     const loadData = async () => {
+      console.log("Fetching divisions...");
       await dispatch(fetchDivisions());
+      console.log("Fetching branches...");
       await dispatch(fetchBranches());
     };
 
     loadData();
   }, [dispatch]);
+
+  // Add this effect to debug divisions data
+  useEffect(() => {
+    console.log("Current divisions:", divisions);
+  }, [divisions]);
 
   useEffect(() => {
     if (divisions && divisions.length > 0) {
@@ -124,29 +131,18 @@ export default function CabangPage() {
     setFilterDivision("all");
   };
 
-  // Find division name by id
   const getDivisionName = (divisionId) => {
     if (!divisionId) return "-";
+    if (!divisions || !Array.isArray(divisions)) return "-";
 
-    // Make sure divisions is available and not empty
-    if (!divisions || !Array.isArray(divisions) || divisions.length === 0) {
-      return "-";
-    }
+    // Handle case where divisionId is an object
+    const searchId = divisionId?._id || divisionId?.toString() || divisionId;
 
-    // Debug log - remove in production
-    console.log("Looking for division ID:", divisionId);
-    console.log("Available divisions:", divisions);
+    const division = divisions.find(div => 
+      div._id === searchId || div._id?.toString() === searchId?.toString()
+    );
 
-    // Try to find the division
-    const division = divisions.find((div) => {
-      // Compare as strings to avoid type issues
-      return (
-        String(div._id) === String(divisionId) ||
-        String(div.id) === String(divisionId)
-      );
-    });
-
-    return division ? division.namaDivisi : "-";
+    return division?.namaDivisi || "-";
   };
 
   // Filter branches based on search query and division filter
@@ -154,9 +150,13 @@ export default function CabangPage() {
     const matchesSearch = branch.namaCabang
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const matchesDivision = filterDivision
-      ? branch.divisiId === filterDivision
-      : true;
+    
+    // Fix the division filter comparison
+    const matchesDivision = 
+      filterDivision === "all" 
+        ? true 
+        : String(branch.divisiId) === String(filterDivision);
+    
     return matchesSearch && matchesDivision;
   });
 
@@ -222,8 +222,11 @@ export default function CabangPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Divisi</SelectItem>
-                      {divisions.map((division) => (
-                        <SelectItem key={division._id} value={division._id}>
+                      {divisions?.map((division) => (
+                        <SelectItem
+                          key={division._id}
+                          value={division._id?.toString()}
+                        >
                           {division.namaDivisi}
                         </SelectItem>
                       ))}

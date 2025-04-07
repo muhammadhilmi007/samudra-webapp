@@ -121,7 +121,19 @@ export default function PegawaiPage() {
 
   // Find branch name by id
   const getBranchName = (branchId) => {
-    const branch = branches.find((branch) => branch._id === branchId);
+    if (!branchId) return "-";
+    
+    // Make sure branches is available and not empty
+    if (!branches || !Array.isArray(branches)) return "-";
+    
+    // Debug the branch ID
+    console.log(`Looking for branch ID: ${branchId}, type: ${typeof branchId}`);
+    
+    // Try to find the branch with more flexible comparison
+    const branch = branches.find(
+      (branch) => String(branch._id) === String(branchId)
+    );
+    
     return branch ? branch.namaCabang : "-";
   };
 
@@ -133,9 +145,10 @@ export default function PegawaiPage() {
       employee.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       employee.telepon?.includes(searchQuery);
 
-    const matchesBranch = filterBranch
-      ? employee.cabangId === filterBranch
-      : true;
+    const matchesBranch = filterBranch === ""
+      ? true
+      : String(employee.cabangId) === String(filterBranch);
+      
     const matchesStatus =
       filterStatus === ""
         ? true

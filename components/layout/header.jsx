@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { 
   Bell, 
@@ -26,6 +26,12 @@ import { getInitials } from '@/lib/utils'
 
 export default function Header({ onMenuButtonClick, user, onLogout }) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [mounted, setMounted] = useState(false)
+
+  // Add useEffect to handle client-side mounting
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -94,10 +100,10 @@ export default function Header({ onMenuButtonClick, user, onLogout }) {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center rounded-full text-sm focus:outline-none">
                 <span className="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full bg-samudra-100">
-                  {user?.fotoProfil ? (
+                  {mounted && user?.fotoProfil ? (
                     <img
                       src={user.fotoProfil}
-                      alt={user.nama}
+                      alt={user?.nama || 'User'}
                       className="h-full w-full object-cover"
                     />
                   ) : (

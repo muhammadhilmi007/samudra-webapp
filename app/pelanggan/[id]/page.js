@@ -82,7 +82,21 @@ export default function PelangganDetailPage() {
 
   // Function to get branch name by id
   const getBranchName = (branchId) => {
-    const branch = branches.find((branch) => branch._id === branchId);
+    if (!branchId) return "-";
+    
+    // Make sure branches is available and not empty
+    if (!branches || !Array.isArray(branches)) return "-";
+    
+    // Handle case where branchId is an object
+    const searchId = typeof branchId === 'object' && branchId?._id 
+      ? branchId._id.toString() 
+      : branchId?.toString();
+    
+    // Try to find the branch with more flexible comparison
+    const branch = branches.find(
+      (branch) => String(branch._id) === searchId
+    );
+    
     return branch ? branch.namaCabang : "-";
   };
 

@@ -53,7 +53,6 @@ import {
   Filter,
 } from "lucide-react";
 import { useToast } from "@/lib/hooks/use-toast";
-import { formatDate, getInitials } from "@/lib/utils";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
@@ -79,10 +78,29 @@ export default function PelangganPage() {
     email: "admin@samudra-erp.com",
   };
 
+  // Add this effect to refresh data when the component is mounted
   useEffect(() => {
+    // Fetch data on initial load
     dispatch(fetchCustomers());
     dispatch(fetchBranches());
+    
+    // Set up an interval to refresh data every 30 seconds
+    const refreshInterval = setInterval(() => {
+      dispatch(fetchCustomers());
+      dispatch(fetchBranches());
+    }, 30000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(refreshInterval);
   }, [dispatch]);
+  
+  // Add this effect to refresh data when success changes
+  useEffect(() => {
+    if (success) {
+      dispatch(fetchCustomers());
+      dispatch(clearSuccess());
+    }
+  }, [dispatch, success]);
 
   useEffect(() => {
     if (error) {
@@ -123,9 +141,26 @@ export default function PelangganPage() {
     setFilterType("");
   };
 
-  // Find branch name by id
+  // Function to get branch name by id
   const getBranchName = (branchId) => {
-    const branch = branches.find((branch) => branch._id === branchId);
+    if (!branchId) return "-";
+    
+    // Make sure branches is available and not empty
+    if (!branches || !Array.isArray(branches)) return "-";
+    
+    // Handle case where branchId is an object
+    const searchId = typeof branchId === 'object' && branchId?._id 
+      ? branchId._id.toString() 
+      : branchId?.toString();
+    
+    console.log("Looking for branch with ID:", searchId);
+    console.log("Available branches:", branches.map(b => ({ id: b._id, name: b.namaCabang })));
+    
+    // Try to find the branch with more flexible comparison
+    const branch = branches.find(
+      (branch) => String(branch._id) === searchId
+    );
+    
     return branch ? branch.namaCabang : "-";
   };
 
@@ -166,6 +201,7 @@ export default function PelangganPage() {
   };
 
   // Filter customers based on search query, branch filter, and type filter
+  // Filter customers based on search query, branch filter, and type filter
   const filteredCustomers = (customers || []).filter((customer) => {
     const matchesSearch =
       customer.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -174,12 +210,18 @@ export default function PelangganPage() {
       customer.perusahaan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.alamat?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.kota?.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const matchesBranch = filterBranch
-      ? customer.cabangId === filterBranch
-      : true;
-    const matchesType = filterType ? customer.tipe === filterType : true;
-
+  
+    // Handle branch ID comparison more flexibly
+    const matchesBranch = filterBranch === "" || filterBranch === "all"
+      ? true
+      : String(customer.cabangId) === String(filterBranch) || 
+        (typeof customer.cabangId === 'object' && 
+         String(customer.cabangId?._id) === String(filterBranch));
+      
+    const matchesType = filterType === "" || filterType === "all" 
+      ? true 
+      : customer.tipe === filterType;
+  
     return matchesSearch && matchesBranch && matchesType;
   });
 

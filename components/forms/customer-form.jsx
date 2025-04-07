@@ -10,6 +10,7 @@ import {
   createCustomer, 
   updateCustomer, 
   fetchCustomerById,
+  fetchCustomers,
   clearCustomerState,
 } from '@/lib/redux/slices/customerSlice'
 import { fetchBranches } from '@/lib/redux/slices/cabangSlice'
@@ -103,16 +104,42 @@ export default function CustomerForm({ customerId }) {
   
   // Fetch data if editing
   useEffect(() => {
+    // Fetch branches with a console log to debug
     dispatch(fetchBranches())
+    console.log("Fetching branches for customer form")
     
     if (isEditing && customerId) {
       dispatch(fetchCustomerById(customerId))
     }
   }, [dispatch, isEditing, customerId])
   
+  // Debug branches data
+  useEffect(() => {
+    console.log("Branches in customer form:", branches)
+  }, [branches])
+  
   // Populate form when data is fetched
   useEffect(() => {
     if (isEditing && currentCustomer) {
+      // Normalize cabangId to ensure it's a string
+      let cabangId = '';
+      
+      // Handle different possible formats of cabangId
+      if (currentCustomer.cabangId) {
+        if (typeof currentCustomer.cabangId === 'object') {
+          // If it's an object with _id property
+          cabangId = currentCustomer.cabangId._id?.toString() || '';
+          console.log("Extracted cabangId from object:", cabangId);
+        } else {
+          // If it's already a string or other primitive
+          cabangId = currentCustomer.cabangId.toString();
+          console.log("Converted cabangId to string:", cabangId);
+        }
+      }
+      
+      console.log("Setting form values with normalized cabangId:", cabangId);
+      console.log("Current customer data:", currentCustomer);
+      
       form.reset({
         nama: currentCustomer.nama || '',
         tipe: currentCustomer.tipe || '',
@@ -124,10 +151,10 @@ export default function CustomerForm({ customerId }) {
         telepon: currentCustomer.telepon || '',
         email: currentCustomer.email || '',
         perusahaan: currentCustomer.perusahaan || '',
-        cabangId: currentCustomer.cabangId || ''
-      })
+        cabangId: cabangId
+      });
     }
-  }, [form, isEditing, currentCustomer])
+  }, [form, isEditing, currentCustomer]);
   
   // Handle error and success states
   useEffect(() => {
@@ -138,51 +165,97 @@ export default function CustomerForm({ customerId }) {
         variant: 'destructive',
       })
       // Clear error state
-    dispatch(clearCustomerState())
+      dispatch(clearCustomerState())
     }
     
-    if (success) {
+    if (success && !isEditing) {
       toast({
-        title: isEditing ? 'Pelanggan berhasil diperbarui' : 'Pelanggan berhasil ditambahkan',
-        description: `Data pelanggan telah berhasil ${isEditing ? 'diperbarui' : 'disimpan'}.`,
+        title: 'Pelanggan berhasil ditambahkan',
+        description: 'Data pelanggan baru telah berhasil disimpan.',
         variant: 'success',
       })
       
-      if (!isEditing) {
-        // Reset form after successful creation
-        form.reset({
-          nama: '',
-          tipe: '',
-          alamat: '',
-          kelurahan: '',
-          kecamatan: '',
-          kota: '',
-          provinsi: '',
-          telepon: '',
-          email: '',
-          perusahaan: '',
-          cabangId: ''
-        })
-      } else {
-        // Redirect to list after successful update
-        router.push('/pelanggan')
-      }
+      // Reset form after successful creation
+      form.reset({
+        nama: '',
+        tipe: '',
+        alamat: '',
+        kelurahan: '',
+        kecamatan: '',
+        kota: '',
+        provinsi: '',
+        telepon: '',
+        email: '',
+        perusahaan: '',
+        cabangId: ''
+      })
+      
       // Clear success state
-    dispatch(clearCustomerState())
+      dispatch(clearCustomerState())
     }
-  }, [error, success, toast, form, isEditing, router])
+  }, [error, success, toast, form, isEditing, router, dispatch])
   
   // Handle form submission
   const onSubmit = async (data) => {
-    if (isEditing) {
-      await dispatch(updateCustomer({
-        id: customerId,
-        customerData: data
-      }))
-    } else {
-      await dispatch(createCustomer(data))
+    try {
+      // Log the form data for debugging
+      console.log("Form data before submission:", data);
+      
+      // Ensure cabangId is a string
+      const formattedData = {
+        ...data,
+        cabangId: data.cabangId?.toString() || ''
+      };
+      
+      console.log("Formatted data for submission:", formattedData);
+      console.log("Branch ID being submitted:", formattedData.cabangId);
+      
+      if (isEditing) {
+        // For editing, make sure we're passing the correct ID
+        const result = await dispatch(updateCustomer({ 
+          id: customerId, 
+          customerData: formattedData 
+        })).unwrap();
+        
+        console.log("Update result:", result);
+        
+        // Force a refresh of the current customer data
+        await dispatch(fetchCustomerById(customerId)).unwrap();
+        
+        // Force a refresh of all customers data
+        await dispatch(fetchCustomers()).unwrap();
+        
+        toast({
+          title: 'Berhasil',
+          description: 'Data pelanggan berhasil diperbarui',
+          variant: 'success',
+        });
+        
+        // Clear form cache before redirecting
+        form.reset(formattedData);
+        
+        // Delay redirect to ensure data is updated
+        setTimeout(() => {
+          router.push('/pelanggan');
+        }, 1500);
+      } else {
+        await dispatch(createCustomer(formattedData)).unwrap();
+        toast({
+          title: 'Berhasil',
+          description: 'Pelanggan baru berhasil ditambahkan',
+          variant: 'success',
+        });
+        router.push('/pelanggan');
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Terjadi kesalahan saat menyimpan data',
+        variant: 'destructive',
+      });
     }
-  }
+  };
   
   // Handle cancel dialog
   const handleCancel = () => {
@@ -303,16 +376,20 @@ export default function CustomerForm({ customerId }) {
                       )}
                     />
                     
+                    {/* Cabang */}
                     <FormField
                       control={form.control}
                       name="cabangId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Cabang *</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                            value={field.value}
+                          <FormLabel>Cabang</FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              console.log("Selected branch ID:", value);
+                              field.onChange(value);
+                            }}
+                            value={field.value || undefined}
+                            disabled={loading}
                           >
                             <FormControl>
                               <SelectTrigger>
@@ -320,11 +397,20 @@ export default function CustomerForm({ customerId }) {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {branches.map((branch) => (
-                                <SelectItem key={branch._id} value={branch._id}>
-                                  {branch.namaCabang}
-                                </SelectItem>
-                              ))}
+                              {branches && branches.length > 0 ? (
+                                branches.map((branch) => (
+                                  <SelectItem 
+                                    key={branch._id} 
+                                    value={branch._id.toString()}
+                                  >
+                                    {branch.namaCabang || `Cabang ${branch._id.substring(0, 5)}`}
+                                  </SelectItem>
+                                ))
+                              ) : (
+                                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                                  Tidak ada data cabang
+                                </div>
+                              )}
                             </SelectContent>
                           </Select>
                           <FormMessage />
