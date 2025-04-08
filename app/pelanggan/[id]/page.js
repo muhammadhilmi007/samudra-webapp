@@ -60,16 +60,34 @@ export default function PelangganDetailPage() {
     useSelector((state) => state.customer);
   const { branches } = useSelector((state) => state.cabang);
 
+  // Improve the useEffect to handle data fetching and cleanup
+  // Update the useEffect hook
   useEffect(() => {
     if (id) {
+      // Fetch customer data
       dispatch(fetchCustomerById(id));
+      
+      // Fetch related data
       dispatch(fetchBranches());
+    }
+    
+    // Cleanup function
+    return () => {
+      dispatch(clearCustomerState());
+    };
+  }, [dispatch, id]); // Keep only stable dependencies
+  
+  // Add a function to handle tab changes
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+    
+    // Fetch additional data based on active tab if needed
+    if (value === 'transaksi') {
       dispatch(fetchCustomerSTTs(id));
       dispatch(fetchCustomerPickups(id));
     }
-    dispatch(clearCustomerState())
-  }, [dispatch, id]);
-
+  };
+  
   const breadcrumbItems = [
     { title: "Dashboard", link: "/dashboard" },
     { title: "Pelanggan", link: "/pelanggan" },
@@ -83,20 +101,19 @@ export default function PelangganDetailPage() {
   // Function to get branch name by id
   const getBranchName = (branchId) => {
     if (!branchId) return "-";
-    
+
     // Make sure branches is available and not empty
     if (!branches || !Array.isArray(branches)) return "-";
-    
+
     // Handle case where branchId is an object
-    const searchId = typeof branchId === 'object' && branchId?._id 
-      ? branchId._id.toString() 
-      : branchId?.toString();
-    
+    const searchId =
+      typeof branchId === "object" && branchId?._id
+        ? branchId._id.toString()
+        : branchId?.toString();
+
     // Try to find the branch with more flexible comparison
-    const branch = branches.find(
-      (branch) => String(branch._id) === searchId
-    );
-    
+    const branch = branches.find((branch) => String(branch._id) === searchId);
+
     return branch ? branch.namaCabang : "-";
   };
 
@@ -223,7 +240,7 @@ export default function PelangganDetailPage() {
 
             <Tabs
               value={activeTab}
-              onValueChange={setActiveTab}
+              onValueChange={handleTabChange}
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-3">
@@ -358,7 +375,9 @@ export default function PelangganDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {!customerSTTs || !customerSTTs[id] ? (
+                    {!customerSTTs ||
+                    !customerSTTs.data ||
+                    customerSTTs.data.length === 0 ? (
                       <div className="text-center py-8">
                         <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
                         <h3 className="text-lg font-medium mb-1">
@@ -382,7 +401,7 @@ export default function PelangganDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {customerSTTs[id].map((stt) => (
+                            {customerSTTs.data.map((stt) => (
                               <TableRow key={stt._id}>
                                 <TableCell className="font-medium">
                                   {stt.noSTT}
@@ -421,7 +440,9 @@ export default function PelangganDetailPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {!customerPickups || !customerPickups[id] ? (
+                    {!customerPickups ||
+                    !customerPickups.data ||
+                    customerPickups.data.length === 0 ? (
                       <div className="text-center py-8">
                         <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
                         <h3 className="text-lg font-medium mb-1">
@@ -446,7 +467,7 @@ export default function PelangganDetailPage() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {customerPickups[id].map((pickup) => (
+                            {customerPickups.data.map((pickup) => (
                               <TableRow key={pickup._id}>
                                 <TableCell>
                                   {formatDateTime(pickup.tanggal)}

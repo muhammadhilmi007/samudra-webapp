@@ -70,6 +70,10 @@ export default function PelangganPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
 
   // Mock user data (replace with actual auth logic)
   const mockUser = {
@@ -78,22 +82,69 @@ export default function PelangganPage() {
     email: "admin@samudra-erp.com",
   };
 
+  // Add a function to handle search
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1); // Reset to first page when searching
+  };
+
+  // Add a function to handle filter changes
+  const handleFilterChange = (type, value) => {
+    if (type === "branch") {
+      setFilterBranch(value);
+    } else if (type === "type") {
+      setFilterType(value);
+    }
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  // Enhance the useEffect to handle filtering and pagination
+  useEffect(() => {
+    // Prepare query parameters
+    const params = {
+      page: currentPage,
+      limit: itemsPerPage,
+    };
+
+    // Add filters if they exist
+    if (searchQuery) params.search = searchQuery;
+    if (filterBranch) params.cabangId = filterBranch;
+    if (filterType) params.tipe = filterType;
+
+    // Fetch customers with filters
+    dispatch(fetchCustomers(params));
+
+    // Fetch branches for filter dropdown
+    dispatch(fetchBranches());
+
+    // Handle success/error messages
+    if (success) {
+      toast({
+        title: "Sukses",
+        description: "Operasi berhasil dilakukan",
+        variant: "success",
+      });
+      dispatch(clearSuccess());
+    }
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+      dispatch(clearError());
+    }
+  }, [dispatch, currentPage, itemsPerPage, searchQuery, filterBranch, filterType, success, error, toast]);
+
   // Add this effect to refresh data when the component is mounted
   useEffect(() => {
     // Fetch data on initial load
     dispatch(fetchCustomers());
     dispatch(fetchBranches());
-    
-    // Set up an interval to refresh data every 30 seconds
-    const refreshInterval = setInterval(() => {
-      dispatch(fetchCustomers());
-      dispatch(fetchBranches());
-    }, 30000);
-    
-    // Clean up interval on unmount
-    return () => clearInterval(refreshInterval);
+
   }, [dispatch]);
-  
+
   // Add this effect to refresh data when success changes
   useEffect(() => {
     if (success) {
@@ -144,23 +195,25 @@ export default function PelangganPage() {
   // Function to get branch name by id
   const getBranchName = (branchId) => {
     if (!branchId) return "-";
-    
+
     // Make sure branches is available and not empty
     if (!branches || !Array.isArray(branches)) return "-";
-    
+
     // Handle case where branchId is an object
-    const searchId = typeof branchId === 'object' && branchId?._id 
-      ? branchId._id.toString() 
-      : branchId?.toString();
-    
+    const searchId =
+      typeof branchId === "object" && branchId?._id
+        ? branchId._id.toString()
+        : branchId?.toString();
+
     console.log("Looking for branch with ID:", searchId);
-    console.log("Available branches:", branches.map(b => ({ id: b._id, name: b.namaCabang })));
-    
-    // Try to find the branch with more flexible comparison
-    const branch = branches.find(
-      (branch) => String(branch._id) === searchId
+    console.log(
+      "Available branches:",
+      branches.map((b) => ({ id: b._id, name: b.namaCabang }))
     );
-    
+
+    // Try to find the branch with more flexible comparison
+    const branch = branches.find((branch) => String(branch._id) === searchId);
+
     return branch ? branch.namaCabang : "-";
   };
 
@@ -210,18 +263,20 @@ export default function PelangganPage() {
       customer.perusahaan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.alamat?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.kota?.toLowerCase().includes(searchQuery.toLowerCase());
-  
+
     // Handle branch ID comparison more flexibly
-    const matchesBranch = filterBranch === "" || filterBranch === "all"
-      ? true
-      : String(customer.cabangId) === String(filterBranch) || 
-        (typeof customer.cabangId === 'object' && 
-         String(customer.cabangId?._id) === String(filterBranch));
-      
-    const matchesType = filterType === "" || filterType === "all" 
-      ? true 
-      : customer.tipe === filterType;
-  
+    const matchesBranch =
+      filterBranch === "" || filterBranch === "all"
+        ? true
+        : String(customer.cabangId) === String(filterBranch) ||
+          (typeof customer.cabangId === "object" &&
+            String(customer.cabangId?._id) === String(filterBranch));
+
+    const matchesType =
+      filterType === "" || filterType === "all"
+        ? true
+        : customer.tipe === filterType;
+
     return matchesSearch && matchesBranch && matchesType;
   });
 
