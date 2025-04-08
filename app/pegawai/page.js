@@ -28,6 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -62,11 +63,12 @@ export default function PegawaiPage() {
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterBranch, setFilterBranch] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Mock user data (replace with actual auth logic)
   const mockUser = {
@@ -76,9 +78,35 @@ export default function PegawaiPage() {
   };
 
   useEffect(() => {
-    dispatch(fetchEmployees());
+    // Fetch data with filters
+    const fetchData = () => {
+      const params = {};
+      
+      if (searchQuery) {
+        params.search = searchQuery;
+      }
+      
+      if (filterBranch && filterBranch !== 'all') {
+        params.cabangId = filterBranch;
+      }
+      
+      if (filterStatus && filterStatus !== 'all') {
+        params.aktif = filterStatus === 'aktif';
+      }
+      
+      dispatch(fetchEmployees(params));
+    };
+    
+    fetchData();
     dispatch(fetchBranches());
-  }, [dispatch]);
+  }, [dispatch, searchQuery, filterBranch, filterStatus]);
+
+  // Update the clear filters function
+  const handleClearFilters = () => {
+    setSearchQuery("");
+    setFilterBranch("all");
+    setFilterStatus("all");
+  };
 
   useEffect(() => {
     if (error) {
@@ -107,16 +135,26 @@ export default function PegawaiPage() {
 
   const handleConfirmDelete = async () => {
     if (employeeToDelete) {
-      await dispatch(deleteEmployee(employeeToDelete._id));
-      setDeleteDialogOpen(false);
-      setEmployeeToDelete(null);
+      setIsDeleting(true);
+      try {
+        await dispatch(deleteEmployee(employeeToDelete._id)).unwrap();
+        toast({
+          title: "Berhasil",
+          description: `Pegawai ${employeeToDelete.nama} berhasil dihapus`,
+          variant: "success",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error || "Gagal menghapus pegawai",
+          variant: "destructive",
+        });
+      } finally {
+        setIsDeleting(false);
+        setDeleteDialogOpen(false);
+        setEmployeeToDelete(null);
+      }
     }
-  };
-
-  const handleClearFilters = () => {
-    setSearchQuery("");
-    setFilterBranch("");
-    setFilterStatus("");
   };
 
   // Find branch name by id
@@ -126,42 +164,12 @@ export default function PegawaiPage() {
     // Make sure branches is available and not empty
     if (!branches || !Array.isArray(branches)) return "-";
     
-    // Debug the branch ID
-    console.log(`Looking for branch ID: ${branchId}, type: ${typeof branchId}`);
-    
     // Try to find the branch with more flexible comparison
     const branch = branches.find(
       (branch) => String(branch._id) === String(branchId)
     );
     
     return branch ? branch.namaCabang : "-";
-  };
-
-  // Filter employees based on search query, branch filter, and status filter
-  const filteredEmployees = employees.filter((employee) => {
-    const matchesSearch =
-      employee.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.jabatan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      employee.telepon?.includes(searchQuery);
-
-    const matchesBranch = filterBranch === ""
-      ? true
-      : String(employee.cabangId) === String(filterBranch);
-      
-    const matchesStatus =
-      filterStatus === ""
-        ? true
-        : filterStatus === "aktif"
-        ? employee.aktif === true
-        : employee.aktif === false;
-
-    return matchesSearch && matchesBranch && matchesStatus;
-  });
-
-  const handleLogout = () => {
-    // Implement logout functionality
-    console.log("Logging out...");
   };
 
   return (
@@ -179,217 +187,226 @@ export default function PegawaiPage() {
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
           user={mockUser}
-          onLogout={handleLogout}
+          onLogout={() => console.log("Logging out...")}
         />
 
         {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="mx-auto max-w-1xl space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="mx-auto max-w-lxl space-y-6">
+            {/* Page Header */}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  Manajemen Pegawai
-                </h1>
+                <h1 className="text-2xl font-bold tracking-tight">Pegawai</h1>
                 <p className="text-muted-foreground">
                   Kelola data pegawai perusahaan
                 </p>
               </div>
               <Link href="/pegawai/tambah">
-                <Button>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Tambah Pegawai
+                <Button className="gap-1">
+                  <UserPlus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Tambah Pegawai</span>
+                  <span className="sm:hidden">Tambah</span>
                 </Button>
               </Link>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                    <Input
-                      placeholder="Cari nama, jabatan, email, atau telepon..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                </div>
-
-                <div className="w-full md:w-64">
-                  <Select value={filterBranch} onValueChange={setFilterBranch}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filter cabang" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Cabang</SelectItem>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch._id} value={branch._id}>
-                          {branch.namaCabang}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="w-full md:w-48">
-                  <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Filter status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Status</SelectItem>
-                      <SelectItem value="aktif">Aktif</SelectItem>
-                      <SelectItem value="nonaktif">Non-Aktif</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {(searchQuery || filterBranch || filterStatus) && (
-                  <Button
-                    variant="ghost"
-                    onClick={handleClearFilters}
-                    className="h-10 px-3 lg:w-auto"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Clear
-                  </Button>
-                )}
+            {/* Filters */}
+            <div className="flex flex-col gap-4 rounded-lg border bg-card p-4 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Cari pegawai..."
+                  className="pl-8"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
+              <div className="flex flex-1 gap-2">
+                <Select
+                  value={filterBranch}
+                  onValueChange={setFilterBranch}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Semua Cabang" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Cabang</SelectItem>
+                    {branches && branches.map((branch) => (
+                      <SelectItem key={branch._id} value={branch._id}>
+                        {branch.namaCabang}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={filterStatus}
+                  onValueChange={setFilterStatus}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Semua Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="aktif">Aktif</SelectItem>
+                    <SelectItem value="nonaktif">Nonaktif</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleClearFilters}
+                  title="Hapus filter"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
-              <div className="bg-white rounded-md border shadow-sm">
+            {/* Employees Table */}
+            <div className="rounded-lg border bg-card">
+              {loading ? (
+                <div className="flex h-60 items-center justify-center">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : employees.length === 0 ? (
+                <div className="flex h-60 flex-col items-center justify-center gap-2 p-4 text-center">
+                  <div className="rounded-full bg-muted p-3">
+                    <UserPlus className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Tidak ada pegawai</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Belum ada data pegawai yang tersedia.
+                    {searchQuery || filterBranch || filterStatus ? (
+                      " Coba ubah filter pencarian."
+                    ) : (
+                      " Tambahkan pegawai baru untuk memulai."
+                    )}
+                  </p>
+                  {!searchQuery && !filterBranch && !filterStatus && (
+                    <Link href="/pegawai/tambah">
+                      <Button className="mt-2 gap-1">
+                        <UserPlus className="h-4 w-4" />
+                        Tambah Pegawai
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              ) : (
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Pegawai</TableHead>
+                        <TableHead>Nama</TableHead>
                         <TableHead>Jabatan</TableHead>
                         <TableHead>Cabang</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Telepon</TableHead>
+                        <TableHead>Kontak</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Aksi</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {loading ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="h-24 text-center">
-                            <div className="flex justify-center items-center">
-                              <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
-                              <span className="ml-2">Memuat data...</span>
+                      {employees.map((employee) => (
+                        <TableRow key={employee._id}>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                {employee.fotoProfil && employee.fotoProfil !== 'default.jpg' ? (
+                                  <img
+                                    src={`${process.env.NEXT_PUBLIC_API_URL}/uploads/${employee.fotoProfil}`}
+                                    alt={employee.nama}
+                                    className="h-10 w-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <span>{getInitials(employee.nama)}</span>
+                                )}
+                              </div>
+                              <div>
+                                <div>{employee.nama}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {employee.username}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>{employee.jabatan}</TableCell>
+                          <TableCell>{getBranchName(employee.cabangId)}</TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              {employee.email && (
+                                <div className="text-xs">{employee.email}</div>
+                              )}
+                              <div className="text-xs">{employee.telepon}</div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={employee.aktif ? "success" : "destructive"}
+                              className="capitalize"
+                            >
+                              {employee.aktif ? "Aktif" : "Nonaktif"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Link href={`/pegawai/${employee._id}`}>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  title="Edit"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                title="Hapus"
+                                onClick={() => handleDeleteClick(employee)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
-                      ) : filteredEmployees.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={7} className="h-24 text-center">
-                            {searchQuery || filterBranch || filterStatus ? (
-                              <div>
-                                Tidak ada pegawai yang cocok dengan filter yang
-                                dipilih
-                              </div>
-                            ) : (
-                              <div>Belum ada data pegawai</div>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredEmployees.map((employee) => (
-                          <TableRow key={employee._id}>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-full flex items-center justify-center bg-gray-100 text-gray-700 overflow-hidden">
-                                  {employee.fotoProfil ? (
-                                    <img
-                                      src={employee.fotoProfil}
-                                      alt={employee.nama}
-                                      className="h-full w-full object-cover"
-                                    />
-                                  ) : (
-                                    <span className="font-medium text-sm">
-                                      {getInitials(employee.nama)}
-                                    </span>
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-medium">
-                                    {employee.nama}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    @{employee.username}
-                                  </div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{employee.jabatan}</TableCell>
-                            <TableCell>
-                              {getBranchName(employee.cabangId)}
-                            </TableCell>
-                            <TableCell>{employee.email || "-"}</TableCell>
-                            <TableCell>{employee.telepon || "-"}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  employee.aktif ? "success" : "secondary"
-                                }
-                                className={
-                                  employee.aktif
-                                    ? "bg-green-100 text-green-800 hover:bg-green-100"
-                                    : "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                                }
-                              >
-                                {employee.aktif ? "Aktif" : "Non-Aktif"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Link href={`/pegawai/${employee._id}`}>
-                                  <Button variant="outline" size="sm">
-                                    <Edit className="h-4 w-4" />
-                                    <span className="sr-only">Edit</span>
-                                  </Button>
-                                </Link>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDeleteClick(employee)}
-                                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Delete</span>
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
+                      ))}
                     </TableBody>
                   </Table>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </main>
       </div>
 
-      {/* Delete confirmation dialog */}
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+            <AlertDialogTitle>Konfirmasi Hapus Pegawai</AlertDialogTitle>
             <AlertDialogDescription>
-              Tindakan ini akan menghapus pegawai &quot;{employeeToDelete?.nama}
-              &quot; dan tidak dapat dibatalkan.
+              Apakah Anda yakin ingin menghapus pegawai{" "}
+              <span className="font-semibold">
+                {employeeToDelete?.nama}
+              </span>
+              ? Tindakan ini tidak dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDelete}
-              className="bg-red-500 hover:bg-red-600"
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Hapus
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menghapus...
+                </>
+              ) : (
+                "Hapus"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

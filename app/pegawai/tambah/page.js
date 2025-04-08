@@ -83,6 +83,7 @@ export default function TambahPegawaiPage() {
 
   const [formErrors, setFormErrors] = useState({});
   const [activeTab, setActiveTab] = useState("info-dasar");
+  const [isSubmitting, setIsSubmitting] = useState(false); // Add this line to define the missing state
 
   useEffect(() => {
     dispatch(fetchRoles());
@@ -91,9 +92,14 @@ export default function TambahPegawaiPage() {
 
   useEffect(() => {
     if (error) {
+      // Ensure error is a string
+      const errorMessage = typeof error === 'object' ? 
+        (error.message || "Terjadi kesalahan") : 
+        String(error);
+      
       toast({
         title: "Error",
-        description: error,
+        description: errorMessage,
         variant: "destructive",
       });
       dispatch(clearError());
@@ -271,27 +277,53 @@ export default function TambahPegawaiPage() {
       return;
     }
 
-    // Create FormData for file upload
-    const formDataToSend = new FormData();
-
-    // Add all form fields
-    Object.keys(formData).forEach((key) => {
-      formDataToSend.append(key, formData[key]);
-    });
-
-    // Add files if they exist
-    if (formFiles.fotoProfil) {
-      formDataToSend.append("fotoProfil", formFiles.fotoProfil);
-    }
-
-    if (formFiles.ktpFile) {
-      formDataToSend.append("dokumen.ktp", formFiles.ktpFile);
-    }
+    // Create form data to send
+    const formDataToSend = { ...formData };
+    
+    // Ensure all required fields are properly formatted
+    if (!formDataToSend.roleId) delete formDataToSend.roleId;
+    if (!formDataToSend.cabangId) delete formDataToSend.cabangId;
+    
+    // Convert boolean to proper format if needed
+    formDataToSend.aktif = Boolean(formDataToSend.aktif);
 
     try {
-      await dispatch(createEmployee(formDataToSend));
+      setIsSubmitting(true);
+      await dispatch(createEmployee(formDataToSend)).unwrap();
+      // Success will be handled by the useEffect watching for success state
     } catch (error) {
-      console.error("Error creating employee:", error);
+      // If there are validation errors from the server, display them
+      if (error.validationErrors) {
+        const serverErrors = {};
+        
+        // Map server validation errors to form fields
+        Object.entries(error.validationErrors).forEach(([key, value]) => {
+          serverErrors[key] = Array.isArray(value) ? value[0] : value;
+        });
+        
+        setFormErrors(serverErrors);
+        
+        // Navigate to the appropriate tab based on the error
+        const firstErrorField = Object.keys(serverErrors)[0];
+        if (['nama', 'jabatan', 'roleId', 'email', 'telepon', 'alamat'].includes(firstErrorField)) {
+          setActiveTab('info-dasar');
+        } else if (['username', 'password', 'cabangId'].includes(firstErrorField)) {
+          setActiveTab('login');
+        }
+      }
+      
+      // Make sure we're passing a string to the toast description
+      const errorMessage = typeof error === 'object' ? 
+        (error.message || "Gagal menambahkan pegawai") : 
+        String(error);
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
