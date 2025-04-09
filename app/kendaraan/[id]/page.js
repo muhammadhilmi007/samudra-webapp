@@ -58,14 +58,8 @@ export default function EditVehiclePage() {
         <main className="flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
           <div className="mx-auto max-w-1xl space-y-6">
             <Breadcrumbs items={breadcrumbItems} />
-            {loading && !id ? (
-              <div className="flex justify-center items-center h-[50vh]">
-                <LoadingSpinner />
-              </div>
-            ) : error ? (
-              <div className="py-8">
-                <ErrorMessage title="Error memuat data kendaraan" description={error} />
-              </div>
+            {error ? (
+              <ErrorMessage message={error} />
             ) : (
               <VehicleForm vehicleId={id} />
             )}

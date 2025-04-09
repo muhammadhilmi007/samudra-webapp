@@ -54,18 +54,23 @@ import Sidebar from "@/components/layout/sidebar";
 
 export default function VehicleListPage() {
   const dispatch = useDispatch();
-  const { vehicles, loading, error, success } = useSelector((state) => state.vehicle);
+  const { vehicles, loading, error, success } = useSelector(
+    (state) => state.vehicle
+  );
   const { branches } = useSelector((state) => state.cabang);
   const { toast } = useToast();
 
+  // Initialize filter states with "all" instead of empty string
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterBranch, setFilterBranch] = useState("");
-  const [filterType, setFilterType] = useState("");
+  const [filterBranch, setFilterBranch] = useState("all");
+  const [filterType, setFilterType] = useState("all");
   const [sortField, setSortField] = useState("noPolisi");
   const [sortDirection, setSortDirection] = useState("asc");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [vehicleToDelete, setVehicleToDelete] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Mock user data (replace with actual auth logic)
   const mockUser = {
@@ -80,10 +85,37 @@ export default function VehicleListPage() {
   ];
 
   useEffect(() => {
-    dispatch(fetchVehicles());
+    // Prepare query parameters
+    const params = {
+      page: currentPage,
+      limit: itemsPerPage,
+    };
+
+    // Add filters if they exist
+    if (searchQuery) params.search = searchQuery;
+    
+    // Only add cabangId filter if it's not "all"
+    if (filterBranch && filterBranch !== "all") {
+      params.cabangId = filterBranch;
+    }
+    
+    // Only add type filter if it's not "all"
+    if (filterType && filterType !== "all") {
+      params.tipe = filterType;
+    }
+    
+    // Fetch data with the filtered params
+    dispatch(fetchVehicles(params));
     dispatch(fetchBranches());
     dispatch(fetchEmployees());
-  }, [dispatch]);
+  }, [
+    dispatch,
+    searchQuery,
+    filterBranch,
+    filterType,
+    currentPage,
+    itemsPerPage,
+  ]);
 
   useEffect(() => {
     if (error) {
@@ -130,16 +162,42 @@ export default function VehicleListPage() {
 
   const handleClearFilters = () => {
     setSearchQuery("");
-    setFilterBranch("");
-    setFilterType("");
+    setFilterBranch("all"); // Set to "all" instead of empty string
+    setFilterType("all"); // Set to "all" instead of empty string
     setSortField("noPolisi");
     setSortDirection("asc");
-    dispatch(fetchVehicles());
+    // Pass empty params object to fetch all vehicles
+    dispatch(fetchVehicles({}));
+  };
+
+  // Add a function to handle search
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1); // Reset to first page when searching
   };
 
   // Find branch name by id
   const getBranchName = (branchId) => {
-    const branch = branches.find((branch) => branch._id === branchId);
+    if (!branchId) return "-";
+
+    // Make sure branches is available and not empty
+    if (!branches || !Array.isArray(branches)) return "-";
+
+    // Handle case where branchId is an object
+    const searchId =
+      typeof branchId === "object" && branchId?._id
+        ? branchId._id.toString()
+        : branchId?.toString();
+
+    console.log("Looking for branch with ID:", searchId);
+    console.log(
+      "Available branches:",
+      branches.map((b) => ({ id: b._id, name: b.namaCabang }))
+    );
+
+    // Try to find the branch with more flexible comparison
+    const branch = branches.find((branch) => String(branch._id) === searchId);
+
     return branch ? branch.namaCabang : "-";
   };
 
@@ -158,15 +216,28 @@ export default function VehicleListPage() {
     return <Badge variant={typeInfo.variant}>{typeInfo.label}</Badge>;
   };
 
-  // Filter and sort data
+  // Filter and sort data - improved filtering logic
   const filteredVehicles = vehicles.filter((vehicle) => {
+    // Search filter
     const matchesSearch =
+      !searchQuery ||
       vehicle.noPolisi?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       vehicle.namaKendaraan?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesBranch = filterBranch ? vehicle.cabangId === filterBranch : true;
+    // Branch filter - improved to handle object or string IDs
+    const matchesBranch = 
+      !filterBranch || 
+      filterBranch === "all" || 
+      (vehicle.cabangId && (
+        (typeof vehicle.cabangId === 'object' && vehicle.cabangId._id === filterBranch) ||
+        (typeof vehicle.cabangId === 'string' && vehicle.cabangId === filterBranch)
+      ));
 
-    const matchesType = filterType ? vehicle.tipe === filterType : true;
+    // Type filter
+    const matchesType = 
+      !filterType || 
+      filterType === "all" || 
+      vehicle.tipe === filterType;
 
     return matchesSearch && matchesBranch && matchesType;
   });
@@ -254,7 +325,11 @@ export default function VehicleListPage() {
                 </div>
 
                 <div className="w-full md:w-64">
-                  <Select value={filterBranch} onValueChange={setFilterBranch}>
+                  <Select 
+                    value={filterBranch} 
+                    onValueChange={setFilterBranch}
+                    defaultValue="all"
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Filter cabang" />
                     </SelectTrigger>
@@ -270,7 +345,11 @@ export default function VehicleListPage() {
                 </div>
 
                 <div className="w-full md:w-48">
-                  <Select value={filterType} onValueChange={setFilterType}>
+                  <Select 
+                    value={filterType} 
+                    onValueChange={setFilterType}
+                    defaultValue="all"
+                  >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Filter tipe" />
                     </SelectTrigger>
@@ -282,7 +361,11 @@ export default function VehicleListPage() {
                   </Select>
                 </div>
 
-                {(searchQuery || filterBranch || filterType || sortField !== "noPolisi" || sortDirection !== "asc") && (
+                {(searchQuery ||
+                  filterBranch ||
+                  filterType ||
+                  sortField !== "noPolisi" ||
+                  sortDirection !== "asc") && (
                   <Button
                     variant="ghost"
                     onClick={handleClearFilters}
@@ -338,8 +421,8 @@ export default function VehicleListPage() {
                           <TableCell colSpan={6} className="h-24 text-center">
                             {searchQuery || filterBranch || filterType ? (
                               <div>
-                                Tidak ada kendaraan yang cocok dengan filter yang
-                                dipilih
+                                Tidak ada kendaraan yang cocok dengan filter
+                                yang dipilih
                               </div>
                             ) : (
                               <div>Belum ada data kendaraan</div>
@@ -350,7 +433,9 @@ export default function VehicleListPage() {
                         sortedVehicles.map((vehicle) => (
                           <TableRow key={vehicle._id}>
                             <TableCell>
-                              <div className="font-medium">{vehicle.noPolisi}</div>
+                              <div className="font-medium">
+                                {vehicle.noPolisi}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <div className="font-medium">

@@ -42,6 +42,7 @@ export default function PickupDetailPage() {
   const { id } = useParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { pickup, loading, error } = useSelector((state) => state.pickup);
+  const [statusNotes, setStatusNotes] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -51,7 +52,17 @@ export default function PickupDetailPage() {
 
   const handleStatusChange = async (status) => {
     try {
-      await dispatch(updatePickupStatus({ id, status })).unwrap();
+      await dispatch(
+        updatePickupStatus({
+          id,
+          status,
+          notes: statusNotes, // Include notes when updating status
+        })
+      ).unwrap();
+
+      // Reset notes after successful update
+      setStatusNotes("");
+
       toast({
         title: "Status berhasil diubah",
         description: `Status pengambilan berhasil diubah menjadi ${status}`,
@@ -124,8 +135,9 @@ export default function PickupDetailPage() {
     );
   }
 
+  // Add textarea for notes when changing status
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex min-h-screen">
       {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
@@ -374,25 +386,25 @@ export default function PickupDetailPage() {
                     </div>
                   </div>
                   {pickup.waktuBerangkat && (
-                    <div className="flex items-start gap-2">
-                      <div className="h-2 w-2 rounded-full bg-yellow-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Kendaraan berangkat</p>
-                        <p className="text-sm text-gray-500">
-                          {formatDateTime(pickup.waktuBerangkat)}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Truck className="h-4 w-4 text-blue-500" />
+                      <span>
+                        Berangkat: {formatDateTime(pickup.waktuBerangkat)}
+                      </span>
                     </div>
                   )}
                   {pickup.waktuPulang && (
-                    <div className="flex items-start gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Kendaraan kembali</p>
-                        <p className="text-sm text-gray-500">
-                          {formatDateTime(pickup.waktuPulang)}
-                        </p>
-                      </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Selesai: {formatDateTime(pickup.waktuPulang)}</span>
+                    </div>
+                  )}
+                  {pickup.notes && (
+                    <div className="mt-4">
+                      <h3 className="text-sm font-medium">Catatan:</h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {pickup.notes}
+                      </p>
                     </div>
                   )}
                   {pickup.status === "SELESAI" && (
@@ -417,6 +429,8 @@ export default function PickupDetailPage() {
                       </div>
                     </div>
                   )}
+                  {/* Render status actions */}
+                  {renderStatusActions()}
                 </div>
               </CardContent>
             </Card>

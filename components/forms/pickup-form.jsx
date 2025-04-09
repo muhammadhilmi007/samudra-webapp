@@ -20,39 +20,44 @@ import {
 } from '@/components/ui/form';
 import { Save, Loader2 } from 'lucide-react';
 
-// Validation schema
+// Perbaiki validation schema
+// Update the form schema to properly handle notes
 const pickupFormSchema = z.object({
-  pengirimId: z.string().min(1, 'Pengirim harus dipilih'),
-  alamatPengambilan: z.string().min(1, 'Alamat pengambilan harus diisi'),
-  tujuan: z.string().min(1, 'Tujuan harus diisi'),
-  jumlahColly: z.coerce.number().positive('Jumlah colly harus lebih dari 0'),
-  supirId: z.string().min(1, 'Supir harus dipilih'),
-  kenekId: z.string().optional(),
-  kendaraanId: z.string().min(1, 'Kendaraan harus dipilih'),
+  pengirimId: z.string().min(1, "Pengirim harus dipilih"),
+  alamatPengambilan: z.string().min(1, "Alamat pengambilan harus diisi"),
+  tujuan: z.string().min(1, "Tujuan harus diisi"),
+  jumlahColly: z.coerce.number().positive("Jumlah colly harus lebih dari 0"),
+  supirId: z.string().min(1, "Supir harus dipilih"),
+  kenekId: z.string().optional().nullable(),
+  kendaraanId: z.string().min(1, "Kendaraan harus dipilih"),
   estimasiPengambilan: z.string().optional(),
+  notes: z.string().optional().nullable(),
+  status: z.string().optional()
 });
 
-export function PickupForm({ 
-  onSubmit, 
-  initialData, 
+export function PickupForm({
+  onSubmit,
+  initialData,
   isLoading,
-  senders = [], 
-  vehicles = [], 
-  drivers = [], 
-  helpers = [] 
+  senders = [],
+  vehicles = [],
+  drivers = [],
+  helpers = []
 }) {
   const form = useForm({
     resolver: zodResolver(pickupFormSchema),
     defaultValues: initialData || {
-      pengirimId: '',
-      alamatPengambilan: '',
-      tujuan: '',
-      jumlahColly: '',
-      supirId: '',
-      kenekId: '',
-      kendaraanId: '',
-      estimasiPengambilan: '',
-    },
+      pengirimId: "",
+      alamatPengambilan: "",
+      tujuan: "",
+      jumlahColly: "",
+      supirId: "",
+      kenekId: "",
+      kendaraanId: "",
+      estimasiPengambilan: "",
+      notes: "",
+      status: "PENDING"
+    }
   });
   
   // Update form when initialData changes (e.g., edit mode)
@@ -70,6 +75,7 @@ export function PickupForm({
     }
   };
   
+  // Add notes field to the form
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -283,6 +289,26 @@ export function PickupForm({
             )}
           </Button>
         </div>
+        
+        {/* Tambahkan field notes */}
+        <FormField
+          control={form.control}
+          name="notes"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Catatan</FormLabel>
+              <FormControl>
+                <Textarea
+                  placeholder="Tambahkan catatan jika diperlukan"
+                  {...field}
+                  value={field.value || ""}
+                  disabled={isLoading}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </form>
     </Form>
   );

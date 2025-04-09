@@ -1,4 +1,3 @@
-// app/pengambilan/page.js
 "use client";
 
 import { useState, useEffect } from "react";
@@ -12,32 +11,108 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DataTable from "@/components/data-tables/data-table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/lib/hooks/use-toast"; // Fixed import path
+import { useToast } from "@/lib/hooks/use-toast";
 import StatusBadge from "@/components/shared/status-badge";
-import { formatDate } from "@/lib/utils"; // Fixed import to use named export
+import { formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { PlusCircle, FileDown } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function PickupsPage() {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { pickups, loading, error } = useSelector((state) => state.pickup);
+  const { pickups = [], loading, error } = useSelector((state) => state.pickup);
   const [activeTab, setActiveTab] = useState("all");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    status: "",
+    search: "",
+    dateFrom: "",
+    dateTo: "",
+  });
 
-  // Mock user data (replace with actual auth logic)
+  // Enhance the filter handling
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  };
+
+  // Add reset filters function
+  const resetFilters = () => {
+    setFilters({
+      status: "",
+      search: "",
+      dateFrom: "",
+      dateTo: "",
+    });
+    setActiveTab("all");
+  };
+
+  // useEffect(() => {
+  //   const params = {
+  //     ...(filters.status && { status: filters.status }),
+  //     ...(filters.search && { search: filters.search }),
+  //     ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+  //     ...(filters.dateTo && { dateTo: filters.dateTo }),
+  //   };
+
+  //   dispatch(fetchPickups(params));
+  // }, [dispatch, filters]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const params = {
+          ...(filters.status && { status: filters.status }),
+          ...(filters.search && { search: filters.search }),
+          ...(filters.dateFrom && { dateFrom: filters.dateFrom }),
+          ...(filters.dateTo && { dateTo: filters.dateTo }),
+        };
+        await dispatch(fetchPickups(params)).unwrap();
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to fetch pickups",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchData();
+  }, [dispatch, filters, toast]);
+
+  // Add error handling UI
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
+  const filteredData = (pickups || []).filter((item) => {
+    if (activeTab === "all") return true;
+    return item.status === activeTab.toUpperCase();
+  });
+
   const mockUser = {
     nama: "Admin User",
     jabatan: "Administrator",
     email: "admin@samudra-erp.com",
   };
-
-  useEffect(() => {
-    dispatch(fetchPickups());
-  }, [dispatch]);
 
   const handleStatusChange = async (id, status) => {
     try {
@@ -132,19 +207,8 @@ export default function PickupsPage() {
   ];
 
   const handleLogout = () => {
-    // Implement logout functionality
     console.log("Logging out...");
   };
-
-  // Filter data based on active tab
-  const filteredData = pickups.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "pending") return item.status === "PENDING";
-    if (activeTab === "berangkat") return item.status === "BERANGKAT";
-    if (activeTab === "selesai") return item.status === "SELESAI";
-    if (activeTab === "cancelled") return item.status === "CANCELLED";
-    return true;
-  });
 
   const breadcrumbItems = [
     { label: "Dashboard", href: "/dashboard" },
@@ -166,25 +230,21 @@ export default function PickupsPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
-      {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={mockUser}
       />
 
-      {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
           user={mockUser}
           onLogout={handleLogout}
         />
 
-        {/* Page Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="mx-auto max-w-1xl space-y-6">
+          <div className="mx-auto max-w-lxl space-y-6">
             <Breadcrumbs items={breadcrumbItems} />
 
             <div className="flex justify-between items-center mb-4 mt-4">
@@ -208,27 +268,73 @@ export default function PickupsPage() {
                 <CardTitle>Daftar Pengambilan</CardTitle>
               </CardHeader>
               <CardContent>
+                {/* Filter section */}
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <div>
+                    <Label htmlFor="search">Cari</Label>
+                    <Input
+                      id="search"
+                      placeholder="No. Pengambilan, Pengirim..."
+                      value={filters.search}
+                      onChange={(e) =>
+                        handleFilterChange("search", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="status">Status</Label>
+                    <Select
+                      value={filters.status}
+                      onValueChange={(value) =>
+                        handleFilterChange("status", value)
+                      }
+                    >
+                      <SelectTrigger id="status">
+                        <SelectValue placeholder="Semua Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Semua Status</SelectItem>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                        <SelectItem value="BERANGKAT">Berangkat</SelectItem>
+                        <SelectItem value="SELESAI">Selesai</SelectItem>
+                        <SelectItem value="CANCELLED">Dibatalkan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="dateFrom">Dari Tanggal</Label>
+                    <Input
+                      id="dateFrom"
+                      type="date"
+                      value={filters.dateFrom}
+                      onChange={(e) =>
+                        handleFilterChange("dateFrom", e.target.value)
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="dateTo">Sampai Tanggal</Label>
+                    <Input
+                      id="dateTo"
+                      type="date"
+                      value={filters.dateTo}
+                      onChange={(e) =>
+                        handleFilterChange("dateTo", e.target.value)
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="mb-4 flex justify-end">
+                  <Button variant="outline" onClick={resetFilters}>
+                    Reset Filter
+                  </Button>
+                </div>
                 <Tabs
                   defaultValue="all"
                   value={activeTab}
                   onValueChange={setActiveTab}
                   className="mt-2"
                 >
-                  <TabsList>
-                    <TabsTrigger value="all">Semua</TabsTrigger>
-                    <TabsTrigger value="pending">
-                      Pending
-                      <Badge variant="secondary" className="ml-2">
-                        {
-                          pickups.filter((item) => item.status === "PENDING")
-                            .length
-                        }
-                      </Badge>
-                    </TabsTrigger>
-                    <TabsTrigger value="berangkat">Berangkat</TabsTrigger>
-                    <TabsTrigger value="selesai">Selesai</TabsTrigger>
-                    <TabsTrigger value="cancelled">Dibatalkan</TabsTrigger>
-                  </TabsList>
                   <TabsContent value={activeTab} className="p-0 mt-2">
                     <DataTable
                       columns={columns}

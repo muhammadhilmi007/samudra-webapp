@@ -14,7 +14,7 @@ import {
   uploadVehiclePhoto,
   uploadVehicleDocument,
   clearError,
-  clearSuccess
+  clearSuccess,
 } from "@/lib/redux/slices/vehicleSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
 import { fetchEmployees } from "@/lib/redux/slices/pegawaiSlice";
@@ -109,10 +109,18 @@ export default function VehicleForm({ vehicleId }) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const { currentVehicle, loading, error, success, uploading, uploadSuccess, uploadError } = useSelector(
-    (state) => state.vehicle
+  const {
+    currentVehicle,
+    loading,
+    error,
+    success,
+    uploading,
+    uploadSuccess,
+    uploadError,
+  } = useSelector((state) => state.vehicle);
+  const { branches, loading: branchesLoading } = useSelector(
+    (state) => state.cabang
   );
-  const { branches, loading: branchesLoading } = useSelector((state) => state.cabang);
   const { employees, loading: employeesLoading } = useSelector(
     (state) => state.pegawai
   );
@@ -160,7 +168,7 @@ export default function VehicleForm({ vehicleId }) {
   useEffect(() => {
     dispatch(clearError());
     dispatch(clearSuccess());
-    
+
     // Fetch branches and employees data if not already loaded
     if (!branches.length) dispatch(fetchBranches());
     if (!employees.length) dispatch(fetchEmployees());
@@ -169,7 +177,7 @@ export default function VehicleForm({ vehicleId }) {
     if (isEditing && vehicleId) {
       dispatch(fetchVehicleById(vehicleId));
     }
-    
+
     // Cleanup function
     return () => {
       dispatch(clearError());
@@ -237,8 +245,12 @@ export default function VehicleForm({ vehicleId }) {
 
     if (success && formSubmitted) {
       toast({
-        title: isEditing ? "Kendaraan berhasil diperbarui" : "Kendaraan berhasil ditambahkan",
-        description: `Data kendaraan telah berhasil ${isEditing ? "diperbarui" : "disimpan"}.`,
+        title: isEditing
+          ? "Kendaraan berhasil diperbarui"
+          : "Kendaraan berhasil ditambahkan",
+        description: `Data kendaraan telah berhasil ${
+          isEditing ? "diperbarui" : "disimpan"
+        }.`,
         variant: "success",
       });
 
@@ -279,7 +291,17 @@ export default function VehicleForm({ vehicleId }) {
       setFormSubmitted(false);
       dispatch(clearSuccess());
     }
-  }, [error, uploadError, success, toast, form, isEditing, router, dispatch, formSubmitted]);
+  }, [
+    error,
+    uploadError,
+    success,
+    toast,
+    form,
+    isEditing,
+    router,
+    dispatch,
+    formSubmitted,
+  ]);
 
   // Handle driver photo upload
   const handleDriverPhotoChange = (files) => {
@@ -362,14 +384,18 @@ export default function VehicleForm({ vehicleId }) {
           try {
             const formData = new FormData();
             formData.append("photo", driverPhotoFile);
-            
-            await dispatch(uploadVehiclePhoto({
-              id: vehicleId,
-              photoType: "driver",
-              formData,
-            })).unwrap();
+
+            await dispatch(
+              uploadVehiclePhoto({
+                id: vehicleId,
+                photoType: "driver",
+                formData,
+              })
+            ).unwrap();
           } catch (error) {
-            errors.push(`Gagal mengunggah foto supir: ${error.message || "Unknown error"}`);
+            errors.push(
+              `Gagal mengunggah foto supir: ${error.message || "Unknown error"}`
+            );
           } finally {
             setIsUploadingDriverPhoto(false);
           }
@@ -385,14 +411,18 @@ export default function VehicleForm({ vehicleId }) {
           try {
             const formData = new FormData();
             formData.append("document", driverIDCardFile);
-            
-            await dispatch(uploadVehicleDocument({
-              id: vehicleId,
-              documentType: "driverIDCard",
-              formData,
-            })).unwrap();
+
+            await dispatch(
+              uploadVehicleDocument({
+                id: vehicleId,
+                documentType: "driverIDCard",
+                formData,
+              })
+            ).unwrap();
           } catch (error) {
-            errors.push(`Gagal mengunggah KTP supir: ${error.message || "Unknown error"}`);
+            errors.push(
+              `Gagal mengunggah KTP supir: ${error.message || "Unknown error"}`
+            );
           } finally {
             setIsUploadingDriverIDCard(false);
           }
@@ -408,14 +438,18 @@ export default function VehicleForm({ vehicleId }) {
           try {
             const formData = new FormData();
             formData.append("photo", helperPhotoFile);
-            
-            await dispatch(uploadVehiclePhoto({
-              id: vehicleId,
-              photoType: "helper",
-              formData,
-            })).unwrap();
+
+            await dispatch(
+              uploadVehiclePhoto({
+                id: vehicleId,
+                photoType: "helper",
+                formData,
+              })
+            ).unwrap();
           } catch (error) {
-            errors.push(`Gagal mengunggah foto kenek: ${error.message || "Unknown error"}`);
+            errors.push(
+              `Gagal mengunggah foto kenek: ${error.message || "Unknown error"}`
+            );
           } finally {
             setIsUploadingHelperPhoto(false);
           }
@@ -431,14 +465,18 @@ export default function VehicleForm({ vehicleId }) {
           try {
             const formData = new FormData();
             formData.append("document", helperIDCardFile);
-            
-            await dispatch(uploadVehicleDocument({
-              id: vehicleId,
-              documentType: "helperIDCard",
-              formData,
-            })).unwrap();
+
+            await dispatch(
+              uploadVehicleDocument({
+                id: vehicleId,
+                documentType: "helperIDCard",
+                formData,
+              })
+            ).unwrap();
           } catch (error) {
-            errors.push(`Gagal mengunggah KTP kenek: ${error.message || "Unknown error"}`);
+            errors.push(
+              `Gagal mengunggah KTP kenek: ${error.message || "Unknown error"}`
+            );
           } finally {
             setIsUploadingHelperIDCard(false);
           }
@@ -466,45 +504,44 @@ export default function VehicleForm({ vehicleId }) {
   const onSubmit = async (data) => {
     try {
       setFormSubmitted(true);
-      
+
       // Clear any existing errors
       dispatch(clearError());
       dispatch(clearSuccess());
 
-      let vehicleId;
-      
+      let resultVehicleId;
+
       if (isEditing) {
         // Update vehicle using the vehicleId prop
-        const result = await dispatch(updateVehicle({
-          id: vehicleId, // The component prop
-          vehicleData: data,
-        })).unwrap();
-        
-        // Use the existing vehicleId for file uploads
-        if (driverPhotoFile || driverIDCardFile || helperPhotoFile || helperIDCardFile) {
-          const uploadSuccess = await uploadFiles(vehicleId); // The component prop
-          if (!uploadSuccess) {
-            throw new Error("Failed to upload one or more files");
-          }
-        }
+        const result = await dispatch(
+          updateVehicle({
+            id: vehicleId, // Use the prop directly
+            vehicleData: data,
+          })
+        ).unwrap();
+
+        resultVehicleId = vehicleId; // Use the prop for file uploads
       } else {
         // Create vehicle
         const result = await dispatch(createVehicle(data)).unwrap();
-        
-        vehicleId = result.data._id;
+        resultVehicleId = result.data._id;
       }
 
       // If we have files to upload, do it now
-      if (driverPhotoFile || driverIDCardFile || helperPhotoFile || helperIDCardFile) {
-        await uploadFiles(vehicleId);
+      if (
+        driverPhotoFile ||
+        driverIDCardFile ||
+        helperPhotoFile ||
+        helperIDCardFile
+      ) {
+        await uploadFiles(resultVehicleId);
       }
-      
     } catch (error) {
       console.error("Error submitting form:", error);
-      
+
       // Enhanced error handling with more detailed messages
       let errorMessage;
-      
+
       if (error.response?.data?.message) {
         // API error with message
         errorMessage = error.response.data.message;
@@ -515,7 +552,8 @@ export default function VehicleForm({ vehicleId }) {
       } else if (error.response?.status === 404) {
         errorMessage = "Data kendaraan tidak ditemukan.";
       } else if (error.response?.status === 422) {
-        errorMessage = "Data yang dimasukkan tidak valid. Silakan periksa kembali.";
+        errorMessage =
+          "Data yang dimasukkan tidak valid. Silakan periksa kembali.";
       } else if (error.message) {
         // Custom error message
         errorMessage = error.message;
@@ -525,57 +563,65 @@ export default function VehicleForm({ vehicleId }) {
           ? "Gagal mengupdate kendaraan. Silakan coba lagi."
           : "Gagal membuat kendaraan baru. Silakan coba lagi.";
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
         variant: "destructive",
       });
-      
+
       setFormSubmitted(false);
     }
   };
 
   // Handle cancel dialog
   const handleCancel = () => {
-    if (form.formState.isDirty || 
-        driverPhotoFile || 
-        driverIDCardFile || 
-        helperPhotoFile || 
-        helperIDCardFile) {
+    if (
+      form.formState.isDirty ||
+      driverPhotoFile ||
+      driverIDCardFile ||
+      helperPhotoFile ||
+      helperIDCardFile
+    ) {
       setCancelDialogOpen(true);
     } else {
       router.push("/kendaraan");
     }
   };
-  
+
   // Filter drivers from employees
   const drivers = Array.isArray(employees)
-    ? employees.filter(employee => {
+    ? employees.filter((employee) => {
         if (!employee) return false;
-        const jobTitle = employee.jabatan || '';
-        return jobTitle.toLowerCase().includes('supir') || 
-               jobTitle.toLowerCase().includes('driver');
+        const jobTitle = employee.jabatan || "";
+        return (
+          jobTitle.toLowerCase().includes("supir") ||
+          jobTitle.toLowerCase().includes("driver")
+        );
       })
     : [];
-    
+
   // Filter helpers from employees
   const helpers = Array.isArray(employees)
-    ? employees.filter(employee => {
+    ? employees.filter((employee) => {
         if (!employee) return false;
-        const jobTitle = employee.jabatan || '';
-        return jobTitle.toLowerCase().includes('kenek') || 
-               jobTitle.toLowerCase().includes('helper') || 
-               jobTitle.toLowerCase().includes('assistant');
+        const jobTitle = employee.jabatan || "";
+        return (
+          jobTitle.toLowerCase().includes("kenek") ||
+          jobTitle.toLowerCase().includes("helper") ||
+          jobTitle.toLowerCase().includes("assistant")
+        );
       })
     : [];
-  
-  const isUploading = isUploadingDriverPhoto || 
-                      isUploadingDriverIDCard || 
-                      isUploadingHelperPhoto || 
-                      isUploadingHelperIDCard;
-  
-  const isLoading = loading || branchesLoading || employeesLoading || uploading || isUploading;
+
+  const isUploading =
+    isUploadingDriverPhoto ||
+    isUploadingDriverIDCard ||
+    isUploadingHelperPhoto ||
+    isUploadingHelperIDCard;
+
+  const isLoading =
+    loading || branchesLoading || employeesLoading || uploading || isUploading;
 
   return (
     <div className="space-y-6">
@@ -595,10 +641,7 @@ export default function VehicleForm({ vehicleId }) {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Batal
           </Button>
-          <Button
-            onClick={form.handleSubmit(onSubmit)}
-            disabled={isLoading}
-          >
+          <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

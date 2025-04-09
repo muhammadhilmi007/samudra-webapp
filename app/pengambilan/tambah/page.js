@@ -47,16 +47,17 @@ import {
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-// Validation schema
+// Update the validation schema to include notes field and handle empty kenekId properly
 const formSchema = z.object({
   pengirimId: z.string().min(1, "Pengirim harus dipilih"),
   alamatPengambilan: z.string().min(1, "Alamat pengambilan harus diisi"),
   tujuan: z.string().min(1, "Tujuan harus diisi"),
   jumlahColly: z.coerce.number().positive("Jumlah colly harus lebih dari 0"),
   supirId: z.string().min(1, "Supir harus dipilih"),
-  kenekId: z.string().optional(),
+  kenekId: z.string().optional().nullable(),
   kendaraanId: z.string().min(1, "Kendaraan harus dipilih"),
   estimasiPengambilan: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export default function AddPickupPage() {
@@ -89,6 +90,7 @@ export default function AddPickupPage() {
       kenekId: "",
       kendaraanId: "",
       estimasiPengambilan: "",
+      notes: "",
     },
   });
 
@@ -129,9 +131,17 @@ export default function AddPickupPage() {
   const onSubmit = async (data) => {
     setSubmitting(true);
     try {
+      // Handle empty kenekId - convert "all" to null or empty string
+      if (data.kenekId === "all") {
+        data.kenekId = null;
+      }
+
+      // Add status field for new pickup
+      data.status = "PENDING";
+      
       // Jika user sudah login dan memiliki ID, tambahkan userId dan cabangId ke data
       if (currentUser) {
-        data.userId = currentUser.id;
+        data.userId = currentUser._id; // Fix: use _id instead of id
         data.cabangId = currentUser.cabangId;
       }
 
@@ -139,13 +149,20 @@ export default function AddPickupPage() {
         data.requestId = requestId;
       }
 
-      await dispatch(createPickup(data)).unwrap();
+      // Add current date if not provided
+      if (!data.tanggal) {
+        data.tanggal = new Date().toISOString();
+      }
+
+      const result = await dispatch(createPickup(data)).unwrap();
+      
       toast({
         title: "Berhasil",
-        description: "Pengambilan berhasil dibuat",
+        description: `Pengambilan dengan nomor ${result.noPengambilan || ''} berhasil dibuat`,
       });
       router.push("/pengambilan");
     } catch (error) {
+      console.error("Error creating pickup:", error);
       toast({
         title: "Gagal",
         description:
@@ -427,6 +444,24 @@ export default function AddPickupPage() {
                             <FormControl>
                               <Input
                                 placeholder="Tanggal atau waktu estimasi"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {/* Add notes field */}
+                      <FormField
+                        control={form.control}
+                        name="notes"
+                        render={({ field }) => (
+                          <FormItem className="md:col-span-2">
+                            <FormLabel>Catatan</FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="Catatan tambahan (opsional)"
                                 {...field}
                               />
                             </FormControl>
