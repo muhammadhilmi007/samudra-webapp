@@ -29,6 +29,7 @@ import {
   FileText,
   Clock,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Separator } from "@/components/ui/separator";
@@ -67,10 +68,13 @@ export default function PickupDetailPage() {
         title: "Status berhasil diubah",
         description: `Status pengambilan berhasil diubah menjadi ${status}`,
       });
+      
+      // Refresh data setelah update status
+      dispatch(fetchPickupById(id));
     } catch (error) {
       toast({
         title: "Gagal mengubah status",
-        description: error.message,
+        description: error.message || "Terjadi kesalahan saat mengubah status",
         variant: "destructive",
       });
     }
@@ -136,6 +140,24 @@ export default function PickupDetailPage() {
   }
 
   // Add textarea for notes when changing status
+  const renderStatusActions = () => {
+    // Hanya tampilkan input catatan jika status sedang dalam proses perubahan
+    if (pickup.status === "PENDING" || pickup.status === "BERANGKAT") {
+      return (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium">Tambahkan Catatan (Opsional):</h3>
+          <Textarea
+            placeholder="Tambahkan catatan untuk perubahan status"
+            value={statusNotes}
+            onChange={(e) => setStatusNotes(e.target.value)}
+            className="mt-2"
+          />
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
@@ -333,105 +355,200 @@ export default function PickupDetailPage() {
               </Card>
             </div>
 
-            {pickup.sttIds && pickup.sttIds.length > 0 && (
-              <Card className="mt-4">
-                <CardHeader>
-                  <CardTitle>Daftar STT</CardTitle>
-                </CardHeader>
-                <CardContent>
+            <Card className="mt-4">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Daftar STT</CardTitle>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-gray-500">
+                    Total STT: {pickup.sttIds?.length || 0}
+                  </p>
+                  {pickup.status !== "CANCELLED" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // Validate if pickup is in valid state for STT creation
+                        if (pickup.status === "PENDING") {
+                          toast({
+                            title: "Tidak dapat membuat STT",
+                            description: "Pengambilan harus dalam status BERANGKAT untuk membuat STT",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        if (pickup.status === "SELESAI" && (!pickup.sttIds || pickup.sttIds.length === 0)) {
+                          toast({
+                            title: "Peringatan",
+                            description: "Pengambilan akan selesai tanpa STT. Pastikan ini benar.",
+                            variant: "warning",
+                          });
+                        }
+                        router.push(`/stt/tambah?pickupId=${pickup._id}`);
+                      }}
+                      disabled={pickup.status === "CANCELLED"}
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Buat STT Baru
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                {pickup.sttIds && pickup.sttIds.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {pickup.sttIds.map((stt, index) => (
+                    {pickup.sttIds.map((stt) => (
                       <Link href={`/stt/${stt._id}`} key={stt._id}>
                         <Card className="hover:border-blue-400 transition-colors cursor-pointer">
                           <CardContent className="p-4">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className="font-medium">{stt.noSTT}</p>
-                                <p className="text-sm text-gray-500">
-                                  {formatDate(stt.createdAt)}
+                            <div className="flex flex-col gap-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="font-medium">{stt.noSTT}</p>
+                                  <p className="text-sm text-gray-500">
+                                    {formatDate(stt.createdAt)}
+                                  </p>
+                                </div>
+                                <StatusBadge status={stt.status} type="stt" />
+                              </div>
+                              <div className="text-sm">
+                                <p className="text-gray-600">
+                                  Tujuan: {stt.tujuan || "-"}
+                                </p>
+                                <p className="text-gray-600">
+                                  Colly: {stt.jumlahColly || 0}
                                 </p>
                               </div>
-                              <StatusBadge status={stt.status} type="stt" />
                             </div>
                           </CardContent>
                         </Card>
                       </Link>
                     ))}
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button asChild className="w-full">
-                    <Link href={`/stt/tambah?pickupId=${pickup._id}`}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Buat STT Baru
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            )}
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <FileText className="mx-auto h-12 w-12 mb-4 text-gray-400" />
+                    <p>Belum ada STT yang dibuat</p>
+                    {pickup.status === "BERANGKAT" && (
+                      <p className="mt-2 text-sm">
+                        Klik tombol "Buat STT Baru" untuk membuat STT
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>Histori Aktivitas</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-2">
-                    <div className="h-2 w-2 rounded-full bg-blue-500 mt-2"></div>
-                    <div>
-                      <p className="font-medium">Pengambilan dibuat</p>
-                      <p className="text-sm text-gray-500">
-                        {formatDateTime(pickup.createdAt)}
-                      </p>
+                <div className="relative">
+                  <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                  <div className="space-y-6 relative">
+                    {/* Created */}
+                    <div className="flex items-start gap-4 ml-6">
+                      <div className="absolute -left-2 p-1 bg-blue-500 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-4 w-4 text-blue-500" />
+                          <p className="font-medium">Pengambilan dibuat</p>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {formatDateTime(pickup.createdAt)}
+                        </p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          Dibuat oleh: {pickup.createdBy?.nama || "System"}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Departed */}
+                    {pickup.waktuBerangkat && (
+                      <div className="flex items-start gap-4 ml-6">
+                        <div className="absolute -left-2 p-1 bg-yellow-500 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-yellow-500" />
+                            <p className="font-medium">Berangkat mengambil barang</p>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {formatDateTime(pickup.waktuBerangkat)}
+                          </p>
+                          <div className="mt-2 text-sm text-gray-600">
+                            <p>Supir: {pickup.supir?.nama || "-"}</p>
+                            <p>Kendaraan: {pickup.kendaraan?.namaKendaraan || "-"} ({pickup.kendaraan?.noPolisi || "-"})</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* STT Creation Events */}
+                    {pickup.sttIds?.map((stt) => (
+                      <div key={stt._id} className="flex items-start gap-4 ml-6">
+                        <div className="absolute -left-2 p-1 bg-purple-500 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-purple-500" />
+                            <p className="font-medium">STT dibuat</p>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {formatDateTime(stt.createdAt)}
+                          </p>
+                          <div className="mt-2 text-sm">
+                            <p>Nomor STT: {stt.noSTT}</p>
+                            <p>Status: <StatusBadge status={stt.status} type="stt" /></p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Completed */}
+                    {pickup.waktuPulang && (
+                      <div className="flex items-start gap-4 ml-6">
+                        <div className="absolute -left-2 p-1 bg-green-500 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <p className="font-medium">Pengambilan selesai</p>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {formatDateTime(pickup.waktuPulang)}
+                          </p>
+                          {pickup.notes && (
+                            <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                              Catatan: {pickup.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Cancelled */}
+                    {pickup.status === "CANCELLED" && (
+                      <div className="flex items-start gap-4 ml-6">
+                        <div className="absolute -left-2 p-1 bg-red-500 rounded-full"></div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            <p className="font-medium">Pengambilan dibatalkan</p>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {formatDateTime(pickup.updatedAt)}
+                          </p>
+                          {pickup.notes && (
+                            <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                              Alasan pembatalan: {pickup.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {pickup.waktuBerangkat && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <Truck className="h-4 w-4 text-blue-500" />
-                      <span>
-                        Berangkat: {formatDateTime(pickup.waktuBerangkat)}
-                      </span>
-                    </div>
-                  )}
-                  {pickup.waktuPulang && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                      <span>Selesai: {formatDateTime(pickup.waktuPulang)}</span>
-                    </div>
-                  )}
-                  {pickup.notes && (
-                    <div className="mt-4">
-                      <h3 className="text-sm font-medium">Catatan:</h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {pickup.notes}
-                      </p>
-                    </div>
-                  )}
-                  {pickup.status === "SELESAI" && (
-                    <div className="flex items-start gap-2">
-                      <div className="h-2 w-2 rounded-full bg-green-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Pengambilan selesai</p>
-                        <p className="text-sm text-gray-500">
-                          {formatDateTime(pickup.updatedAt)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {pickup.status === "CANCELLED" && (
-                    <div className="flex items-start gap-2">
-                      <div className="h-2 w-2 rounded-full bg-red-500 mt-2"></div>
-                      <div>
-                        <p className="font-medium">Pengambilan dibatalkan</p>
-                        <p className="text-sm text-gray-500">
-                          {formatDateTime(pickup.updatedAt)}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                  {/* Render status actions */}
-                  {renderStatusActions()}
                 </div>
+
+                {/* Status action notes */}
+                {renderStatusActions()}
               </CardContent>
             </Card>
           </div>

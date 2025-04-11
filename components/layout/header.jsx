@@ -100,7 +100,12 @@ export default function Header({ onMenuButtonClick, user, onLogout }) {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center rounded-full text-sm focus:outline-none">
                 <span className="relative flex h-8 w-8 shrink-0 overflow-hidden rounded-full bg-samudra-100">
-                  {mounted && user?.fotoProfil ? (
+                  {!mounted ? (
+                    // Show a consistent fallback during SSR
+                    <div className="flex h-full w-full items-center justify-center bg-samudra-100 text-samudra-700">
+                      US
+                    </div>
+                  ) : user?.fotoProfil ? (
                     <img
                       src={user.fotoProfil}
                       alt={user?.nama || 'User'}

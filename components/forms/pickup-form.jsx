@@ -1,38 +1,65 @@
 // components/forms/pickup-form.jsx
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormMessage 
-} from '@/components/ui/form';
-import { Save, Loader2 } from 'lucide-react';
+  FormMessage,
+} from "@/components/ui/form";
+import { Save, Loader2 } from "lucide-react";
 
-// Perbaiki validation schema
-// Update the form schema to properly handle notes
+// Improved validation schema with better error messages
 const pickupFormSchema = z.object({
   pengirimId: z.string().min(1, "Pengirim harus dipilih"),
-  alamatPengambilan: z.string().min(1, "Alamat pengambilan harus diisi"),
-  tujuan: z.string().min(1, "Tujuan harus diisi"),
-  jumlahColly: z.coerce.number().positive("Jumlah colly harus lebih dari 0"),
+  alamatPengambilan: z
+    .string()
+    .min(10, "Alamat pengambilan minimal 10 karakter")
+    .max(500, "Alamat pengambilan maksimal 500 karakter"),
+  tujuan: z
+    .string()
+    .min(3, "Tujuan minimal 3 karakter")
+    .max(200, "Tujuan maksimal 200 karakter"),
+  jumlahColly: z.coerce
+    .number()
+    .positive("Jumlah colly harus lebih dari 0")
+    .max(1000, "Jumlah colly maksimal 1000")
+    .int("Jumlah colly harus berupa angka bulat"),
   supirId: z.string().min(1, "Supir harus dipilih"),
   kenekId: z.string().optional().nullable(),
   kendaraanId: z.string().min(1, "Kendaraan harus dipilih"),
-  estimasiPengambilan: z.string().optional(),
-  notes: z.string().optional().nullable(),
-  status: z.string().optional()
+  estimasiPengambilan: z
+    .string()
+    .min(1, "Estimasi pengambilan harus diisi")
+    .refine((date) => new Date(date) > new Date(), {
+      message: "Estimasi pengambilan harus lebih dari waktu sekarang",
+    }),
+  notes: z
+    .string()
+    .max(1000, "Catatan maksimal 1000 karakter")
+    .optional()
+    .nullable(),
+  status: z
+    .enum(["PENDING", "BERANGKAT", "SELESAI", "CANCELLED"], {
+      invalid_type_error: "Status tidak valid",
+    })
+    .default("PENDING"),
 });
 
 export function PickupForm({
@@ -42,7 +69,7 @@ export function PickupForm({
   senders = [],
   vehicles = [],
   drivers = [],
-  helpers = []
+  helpers = [],
 }) {
   const form = useForm({
     resolver: zodResolver(pickupFormSchema),
@@ -52,30 +79,29 @@ export function PickupForm({
       tujuan: "",
       jumlahColly: "",
       supirId: "",
-      kenekId: "",
+      kenekId: "none",
       kendaraanId: "",
       estimasiPengambilan: "",
       notes: "",
-      status: "PENDING"
-    }
+      status: "PENDING",
+    },
   });
-  
+
   // Update form when initialData changes (e.g., edit mode)
   useEffect(() => {
     if (initialData) {
-      Object.keys(initialData).forEach(key => {
+      Object.keys(initialData).forEach((key) => {
         form.setValue(key, initialData[key]);
       });
     }
   }, [initialData, form]);
-  
+
   const handleSubmit = async (data) => {
     if (onSubmit) {
       await onSubmit(data);
     }
   };
-  
-  // Add notes field to the form
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
@@ -86,8 +112,8 @@ export function PickupForm({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Pengirim</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <Select
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={isLoading}
                 >
@@ -108,7 +134,7 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="jumlahColly"
@@ -116,10 +142,10 @@ export function PickupForm({
               <FormItem>
                 <FormLabel>Jumlah Colly</FormLabel>
                 <FormControl>
-                  <Input 
-                    type="number" 
-                    placeholder="Jumlah colly" 
-                    {...field} 
+                  <Input
+                    type="number"
+                    placeholder="Jumlah colly"
+                    {...field}
                     disabled={isLoading}
                   />
                 </FormControl>
@@ -127,7 +153,7 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="alamatPengambilan"
@@ -135,9 +161,9 @@ export function PickupForm({
               <FormItem className="md:col-span-2">
                 <FormLabel>Alamat Pengambilan</FormLabel>
                 <FormControl>
-                  <Textarea 
-                    placeholder="Masukkan alamat lengkap pengambilan" 
-                    {...field} 
+                  <Textarea
+                    placeholder="Masukkan alamat lengkap pengambilan"
+                    {...field}
                     disabled={isLoading}
                   />
                 </FormControl>
@@ -145,7 +171,7 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="tujuan"
@@ -153,9 +179,9 @@ export function PickupForm({
               <FormItem className="md:col-span-2">
                 <FormLabel>Tujuan</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Masukkan tujuan pengiriman" 
-                    {...field} 
+                  <Input
+                    placeholder="Masukkan tujuan pengiriman"
+                    {...field}
                     disabled={isLoading}
                   />
                 </FormControl>
@@ -163,15 +189,15 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="kendaraanId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Kendaraan</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <Select
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={isLoading}
                 >
@@ -192,15 +218,15 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="supirId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Supir</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <Select
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={isLoading}
                 >
@@ -221,15 +247,15 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="kenekId"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Kenek (Opsional)</FormLabel>
-                <Select 
-                  onValueChange={field.onChange} 
+                <Select
+                  onValueChange={field.onChange}
                   defaultValue={field.value}
                   disabled={isLoading}
                 >
@@ -239,7 +265,7 @@ export function PickupForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">Tidak ada kenek</SelectItem>
+                    <SelectItem value="none">Tidak ada kenek</SelectItem>
                     {helpers.map((helper) => (
                       <SelectItem key={helper._id} value={helper._id}>
                         {helper.nama}
@@ -251,7 +277,7 @@ export function PickupForm({
               </FormItem>
             )}
           />
-          
+
           <FormField
             control={form.control}
             name="estimasiPengambilan"
@@ -259,10 +285,12 @@ export function PickupForm({
               <FormItem>
                 <FormLabel>Estimasi Pengambilan</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Tanggal atau waktu estimasi" 
+                  <Input
+                    type="datetime-local"
+                    placeholder="Pilih tanggal dan waktu"
                     {...field}
                     disabled={isLoading}
+                    min={new Date().toISOString().slice(0, 16)}
                   />
                 </FormControl>
                 <FormMessage />
@@ -270,27 +298,7 @@ export function PickupForm({
             )}
           />
         </div>
-        
-        <div className="flex justify-end gap-2">
-          <Button 
-            type="submit"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Menyimpan...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Simpan
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {/* Tambahkan field notes */}
+
         <FormField
           control={form.control}
           name="notes"
@@ -309,6 +317,22 @@ export function PickupForm({
             </FormItem>
           )}
         />
+
+        <div className="flex justify-end gap-2">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Menyimpan...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Simpan
+              </>
+            )}
+          </Button>
+        </div>
       </form>
     </Form>
   );

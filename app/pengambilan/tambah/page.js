@@ -138,7 +138,7 @@ export default function AddPickupPage() {
 
       // Add status field for new pickup
       data.status = "PENDING";
-      
+
       // Jika user sudah login dan memiliki ID, tambahkan userId dan cabangId ke data
       if (currentUser) {
         data.userId = currentUser._id; // Fix: use _id instead of id
@@ -155,10 +155,12 @@ export default function AddPickupPage() {
       }
 
       const result = await dispatch(createPickup(data)).unwrap();
-      
+
       toast({
         title: "Berhasil",
-        description: `Pengambilan dengan nomor ${result.noPengambilan || ''} berhasil dibuat`,
+        description: `Pengambilan dengan nomor ${
+          result.noPengambilan || ""
+        } berhasil dibuat`,
       });
       router.push("/pengambilan");
     } catch (error) {
@@ -190,12 +192,40 @@ export default function AddPickupPage() {
     (vehicle) => vehicle.tipe === "lansir"
   );
 
-  // Filter pegawai berdasarkan role
-  const drivers = employees.filter((employee) =>
-    employee.jabatan.toLowerCase().includes("supir")
-  );
-  const helpers = employees.filter((employee) =>
-    employee.jabatan.toLowerCase().includes("kenek")
+  // Debugging employees data
+  useEffect(() => {
+    console.log("All employees:", employees);
+    console.log("Filtered drivers:", drivers);
+  }, [employees]);
+
+  // Improved filter for drivers to include admin roles as well
+  const drivers = employees.filter((employee) => {
+    // First ensure employee object exists
+    if (!employee) return false;
+
+    // Check if the employee is an admin/administrator (should always have access)
+    const isAdmin =
+      (employee.role &&
+        ["admin", "administrator"].includes(employee.role.toLowerCase())) ||
+      (employee.jabatan &&
+        ["admin", "administrator"].includes(employee.jabatan.toLowerCase()));
+
+    // Check if employee is a driver
+    const isDriver =
+      (employee.jabatan && employee.jabatan.toLowerCase().includes("supir")) ||
+      (employee.jabatan && employee.jabatan.toLowerCase().includes("driver")) ||
+      (employee.role && employee.role.toLowerCase().includes("driver")) ||
+      (employee.role && employee.role.toLowerCase().includes("supir")) ||
+      (employee.tipe && employee.tipe.toLowerCase().includes("supir"));
+
+    // Return true if employee is either an admin or a driver
+    return isAdmin || isDriver;
+  });
+
+  const helpers = employees.filter(
+    (employee) =>
+      (employee?.jabatan && employee.jabatan.toLowerCase().includes("kenek")) ||
+      (employee?.role && employee.role.toLowerCase().includes("helper"))
   );
 
   const handleLogout = () => {
@@ -386,14 +416,23 @@ export default function AddPickupPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {drivers.map((driver) => (
-                                  <SelectItem
-                                    key={driver._id}
-                                    value={driver._id}
-                                  >
-                                    {driver.nama}
+                                {drivers.length > 0 ? (
+                                  drivers.map((driver) => (
+                                    <SelectItem
+                                      key={
+                                        driver._id ||
+                                        `driver-${driver._id || Math.random()}`
+                                      }
+                                      value={driver._id || driver.id || ""}
+                                    >
+                                      {driver.nama || "Nama tidak tersedia"}
+                                    </SelectItem>
+                                  ))
+                                ) : (
+                                  <SelectItem value="no-drivers" disabled>
+                                    Tidak ada data supir tersedia
                                   </SelectItem>
-                                ))}
+                                )}
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -451,7 +490,7 @@ export default function AddPickupPage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       {/* Add notes field */}
                       <FormField
                         control={form.control}
