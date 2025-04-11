@@ -1,34 +1,36 @@
 // app/pengambilan/request/page.js
 "use client";
 
-import { useState, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { 
-  fetchPickupRequests, 
-  updatePickupRequestStatus 
-} from '@/lib/redux/slices/pickupSlice';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataTable } from '@/components/data-tables/data-table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/lib/hooks/use-toast';
-import { StatusBadge } from '@/components/shared/status-badge';
-import { formatDate } from '@/lib/utils/format';
-import Link from 'next/link';
-import { PlusCircle, FileDown, Filter } from 'lucide-react';
-import { Breadcrumbs } from '@/components/shared/breadcrumbs';
+import { useState, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchPickupRequests,
+  updatePickupRequestStatus,
+} from "@/lib/redux/slices/pickupSlice";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import DataTable from "@/components/data-tables/data-table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/lib/hooks/use-toast";
+import StatusBadge from "@/components/shared/status-badge";
+import { formatDate } from "@/lib/utils/format";
+import Link from "next/link";
+import { PlusCircle, FileDown, Filter } from "lucide-react";
+import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 
 export default function PickupRequestsPage() {
   const dispatch = useDispatch();
   const { toast } = useToast();
-  const { pickupRequests, loading, error } = useSelector(state => state.pickup);
-  const [activeTab, setActiveTab] = useState('all');
-  
+  const { pickupRequests, loading, error } = useSelector(
+    (state) => state.pickup
+  );
+  const [activeTab, setActiveTab] = useState("all");
+
   useEffect(() => {
     dispatch(fetchPickupRequests());
   }, [dispatch]);
-  
+
   const handleStatusChange = async (id, status) => {
     try {
       await dispatch(updatePickupRequestStatus({ id, status })).unwrap();
@@ -44,13 +46,16 @@ export default function PickupRequestsPage() {
       });
     }
   };
-  
+
   const columns = [
     {
       accessorKey: "noRequest",
       header: "No Request",
       cell: ({ row }) => (
-        <Link href={`/pengambilan/request/${row.original._id}`} className="font-medium hover:underline">
+        <Link
+          href={`/pengambilan/request/${row.original._id}`}
+          className="font-medium hover:underline"
+        >
           {row.original.noRequest}
         </Link>
       ),
@@ -80,7 +85,9 @@ export default function PickupRequestsPage() {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.original.status} type="pickupRequest" />,
+      cell: ({ row }) => (
+        <StatusBadge status={row.original.status} type="pickupRequest" />
+      ),
     },
     {
       id: "actions",
@@ -88,11 +95,13 @@ export default function PickupRequestsPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <Link href={`/pengambilan/request/${row.original._id}`}>
-            <Button variant="ghost" size="sm">Detail</Button>
+            <Button variant="ghost" size="sm">
+              Detail
+            </Button>
           </Link>
           {row.original.status === "PENDING" && (
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => handleStatusChange(row.original._id, "FINISH")}
             >
@@ -103,16 +112,16 @@ export default function PickupRequestsPage() {
       ),
     },
   ];
-  
+
   // Filter data berdasarkan tab aktif
-  const filteredData = pickupRequests.filter(item => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'pending') return item.status === 'PENDING';
-    if (activeTab === 'finished') return item.status === 'FINISH';
-    if (activeTab === 'cancelled') return item.status === 'CANCELLED';
+  const filteredData = pickupRequests.filter((item) => {
+    if (activeTab === "all") return true;
+    if (activeTab === "pending") return item.status === "PENDING";
+    if (activeTab === "finished") return item.status === "FINISH";
+    if (activeTab === "cancelled") return item.status === "CANCELLED";
     return true;
   });
-  
+
   const breadcrumbItems = [
     { label: "Dashboard", href: "/dashboard" },
     { label: "Pengambilan", href: "/pengambilan" },
@@ -125,9 +134,7 @@ export default function PickupRequestsPage() {
         <Breadcrumbs items={breadcrumbItems} />
         <Card className="mt-4">
           <CardContent className="pt-6">
-            <div className="text-center text-red-500">
-              Error: {error}
-            </div>
+            <div className="text-center text-red-500">Error: {error}</div>
           </CardContent>
         </Card>
       </div>
@@ -137,7 +144,7 @@ export default function PickupRequestsPage() {
   return (
     <div>
       <Breadcrumbs items={breadcrumbItems} />
-      
+
       <div className="flex justify-between items-center mb-4 mt-4">
         <h1 className="text-2xl font-bold">Request Pengambilan</h1>
         <div className="flex gap-2">
@@ -153,19 +160,27 @@ export default function PickupRequestsPage() {
           </Button>
         </div>
       </div>
-      
+
       <Card>
         <CardHeader className="pb-1">
           <CardTitle>Daftar Request Pengambilan</CardTitle>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="mt-2">
+          <Tabs
+            defaultValue="all"
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="mt-2"
+          >
             <TabsList>
               <TabsTrigger value="all">Semua</TabsTrigger>
               <TabsTrigger value="pending">
                 Pending
                 <Badge variant="secondary" className="ml-2">
-                  {pickupRequests.filter(item => item.status === 'PENDING').length}
+                  {
+                    pickupRequests.filter((item) => item.status === "PENDING")
+                      .length
+                  }
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="finished">Selesai</TabsTrigger>

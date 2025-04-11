@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import {
   createPickupRequest
 } from '@/lib/redux/slices/pickupSlice';
-import { fetchCustomersByCabang } from '@/lib/redux/slices/customerSlice';
+import { fetchCustomersByBranch } from '@/lib/redux/slices/customerSlice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Breadcrumbs } from '@/components/shared/breadcrumbs';
@@ -57,7 +57,7 @@ export default function AddPickupRequestPage() {
   useEffect(() => {
     // Jika user sudah login dan memiliki cabangId, fetch customers berdasarkan cabang tersebut
     if (currentUser?.cabangId) {
-      dispatch(fetchCustomersByCabang(currentUser.cabangId));
+      dispatch(fetchCustomersByBranch(currentUser.cabangId));
     }
   }, [dispatch, currentUser]);
   
