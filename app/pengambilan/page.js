@@ -29,6 +29,7 @@ import {
   Clock,
   MapPin,
   Eye,
+  Edit,
   Loader2,
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
@@ -88,11 +89,29 @@ export default function PickupsPage() {
     notes: "",
   });
 
-  // Mock user data (replace with actual auth logic in production)
+  // Get user data from Redux store
   const user = useSelector((state) => state.auth.currentUser) || {
     nama: "Admin User",
     jabatan: "Administrator",
     email: "admin@samudra-erp.com",
+    role: "admin", // Default role
+  };
+  
+  // Role-based permission check utility
+  const hasPermission = (action) => {
+    const role = user?.role?.toLowerCase() || "guest";
+    
+    // Define permissions for different roles
+    const permissions = {
+      admin: ["view", "create", "edit", "delete", "change_status"],
+      manager: ["view", "create", "edit", "change_status"],
+      operator: ["view", "create", "change_status"],
+      driver: ["view", "change_status"],
+      guest: ["view"]
+    };
+    
+    // Check if user's role has permission for the action
+    return permissions[role]?.includes(action) || false;
   };
 
   // Improved filters state with defaults
@@ -346,14 +365,20 @@ export default function PickupsPage() {
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-gray-500" />
           {row.original.pengirimId ? (
-            <Link
-              href={`/pelanggan/${row.original.pengirimId._id}`}
-              className="text-gray-900 hover:text-blue-600"
-            >
-              {row.original.pengirimId.nama || "-"}
-            </Link>
+            typeof row.original.pengirimId === "object" ? (
+              <Link
+                href={`/pelanggan/${row.original.pengirimId._id}`}
+                className="text-gray-900 hover:text-blue-600"
+              >
+                {row.original.pengirimId.nama || "-"}
+              </Link>
+            ) : (
+              <span className="text-gray-500">ID: {row.original.pengirimId}</span>
+            )
           ) : (
-            <span className="text-gray-500">-</span>
+            <span className="text-gray-500">
+              {row.original.namaPengirim || "-"}
+            </span>
           )}
         </div>
       ),
@@ -406,14 +431,18 @@ export default function PickupsPage() {
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-gray-500" />
           {row.original.supirId ? (
-            <Link
-              href={`/pegawai/${row.original.supirId._id}`}
-              className="text-gray-900 hover:text-blue-600"
-            >
-              {row.original.supirId.nama || "-"}
-            </Link>
+            typeof row.original.supirId === 'object' ? (
+              <Link
+                href={`/pegawai/${row.original.supirId._id}`}
+                className="text-gray-900 hover:text-blue-600"
+              >
+                {row.original.supirId.nama || "-"}
+              </Link>
+            ) : (
+              <span className="text-gray-500">ID: {row.original.supirId}</span>
+            )
           ) : (
-            <span className="text-gray-500">-</span>
+            <span className="text-gray-500">{row.original.namaSupir || "-"}</span>
           )}
         </div>
       ),
@@ -425,18 +454,22 @@ export default function PickupsPage() {
         <div className="flex items-center gap-2">
           <Truck className="h-4 w-4 text-gray-500" />
           {row.original.kendaraanId ? (
-            <Link
-              href={`/kendaraan/${row.original.kendaraanId._id}`}
-              className="text-gray-900 hover:text-blue-600"
-            >
-              {`${row.original.kendaraanId.namaKendaraan || ""} ${
-                row.original.kendaraanId.noPolisi
-                  ? `- ${row.original.kendaraanId.noPolisi}`
-                  : ""
-              }`}
-            </Link>
+            typeof row.original.kendaraanId === 'object' ? (
+              <Link
+                href={`/kendaraan/${row.original.kendaraanId._id}`}
+                className="text-gray-900 hover:text-blue-600"
+              >
+                {`${row.original.kendaraanId.namaKendaraan || ""} ${
+                  row.original.kendaraanId.noPolisi
+                    ? `- ${row.original.kendaraanId.noPolisi}`
+                    : ""
+                }`}
+              </Link>
+            ) : (
+              <span className="text-gray-500">ID: {row.original.kendaraanId}</span>
+            )
           ) : (
-            <span className="text-gray-500">-</span>
+            <span className="text-gray-500">{row.original.namaKendaraan || "-"}</span>
           )}
         </div>
       ),
@@ -477,54 +510,75 @@ export default function PickupsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[180px]">
-            <DropdownMenuItem asChild>
-              <Link
-                href={`/pengambilan/${row.original._id}`}
-                className="flex items-center"
-              >
-                <Eye className="mr-2 h-4 w-4" />
-                <span>Detail</span>
-              </Link>
-            </DropdownMenuItem>
-
-            {row.original.status === "PENDING" && (
-              <DropdownMenuItem
-                onClick={() => openStatusDialog(row.original._id, "BERANGKAT")}
-                className="text-blue-600"
-              >
-                <Truck className="mr-2 h-4 w-4" />
-                <span>Berangkat</span>
+            {/* View details - available to all users with view permission */}
+            {hasPermission("view") && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/pengambilan/${row.original._id}`}
+                  className="flex items-center"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  <span>Detail</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            
+            {/* Edit - only for users with edit permission */}
+            {hasPermission("edit") && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/pengambilan/edit/${row.original._id}`}
+                  className="flex items-center"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  <span>Edit</span>
+                </Link>
               </DropdownMenuItem>
             )}
 
-            {row.original.status === "BERANGKAT" && (
-              <DropdownMenuItem
-                onClick={() => openStatusDialog(row.original._id, "SELESAI")}
-                className="text-green-600"
-              >
-                <CheckCircle className="mr-2 h-4 w-4" />
-                <span>Selesai</span>
-              </DropdownMenuItem>
-            )}
+            {/* Status change actions - only for users with change_status permission */}
+            {hasPermission("change_status") && (
+              <>
+                {row.original.status === "PENDING" && (
+                  <DropdownMenuItem
+                    onClick={() => openStatusDialog(row.original._id, "BERANGKAT")}
+                    className="text-blue-600"
+                  >
+                    <Truck className="mr-2 h-4 w-4" />
+                    <span>Berangkat</span>
+                  </DropdownMenuItem>
+                )}
 
-            {["PENDING", "BERANGKAT"].includes(row.original.status) && (
-              <DropdownMenuItem
-                onClick={() => openStatusDialog(row.original._id, "CANCELLED")}
-                className="text-red-600"
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                <span>Batalkan</span>
-              </DropdownMenuItem>
-            )}
+                {row.original.status === "BERANGKAT" && (
+                  <DropdownMenuItem
+                    onClick={() => openStatusDialog(row.original._id, "SELESAI")}
+                    className="text-green-600"
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    <span>Selesai</span>
+                  </DropdownMenuItem>
+                )}
 
-            {row.original.status === "CANCELLED" && (
-              <DropdownMenuItem
-                onClick={() => openStatusDialog(row.original._id, "PENDING")}
-                className="text-amber-600"
-              >
-                <Clock className="mr-2 h-4 w-4" />
-                <span>Aktifkan Kembali</span>
-              </DropdownMenuItem>
+                {["PENDING", "BERANGKAT"].includes(row.original.status) && (
+                  <DropdownMenuItem
+                    onClick={() => openStatusDialog(row.original._id, "CANCELLED")}
+                    className="text-red-600"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    <span>Batalkan</span>
+                  </DropdownMenuItem>
+                )}
+
+                {row.original.status === "CANCELLED" && (
+                  <DropdownMenuItem
+                    onClick={() => openStatusDialog(row.original._id, "PENDING")}
+                    className="text-amber-600"
+                  >
+                    <Clock className="mr-2 h-4 w-4" />
+                    <span>Aktifkan Kembali</span>
+                  </DropdownMenuItem>
+                )}
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -649,7 +703,7 @@ export default function PickupsPage() {
         <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
-          <div className="mx-auto max-w-7xl space-y-6">
+          <div className="mx-auto max-w-lxl space-y-6">
             <Breadcrumbs items={breadcrumbItems} />
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 mt-4">
@@ -662,19 +716,23 @@ export default function PickupsPage() {
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button
-                  asChild
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                >
-                  <Link href="/pengambilan/tambah">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Tambah Pengambilan
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  <FileDown className="mr-2 h-4 w-4" />
-                  Ekspor Data
-                </Button>
+                {hasPermission("create") && (
+                  <Button
+                    asChild
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                  >
+                    <Link href="/pengambilan/tambah">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Tambah Pengambilan
+                    </Link>
+                  </Button>
+                )}
+                {hasPermission("view") && (
+                  <Button variant="outline" className="w-full sm:w-auto">
+                    <FileDown className="mr-2 h-4 w-4" />
+                    Ekspor Data
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -1053,67 +1111,69 @@ export default function PickupsPage() {
         </main>
       </div>
 
-      {/* Status Change Dialog */}
-      <Dialog open={statusDialog.isOpen} onOpenChange={closeStatusDialog}>
-        <DialogContent className={`sm:max-w-md ${statusAttr.color}`}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <div
-                className={`p-2 rounded-full ${
-                  statusAttr.status === "CANCELLED"
-                    ? "bg-red-100"
-                    : statusAttr.status === "SELESAI"
-                    ? "bg-green-100"
-                    : statusAttr.status === "BERANGKAT"
-                    ? "bg-blue-100"
-                    : "bg-amber-100"
-                }`}
-              >
-                {statusAttr.icon}
+      {/* Status Change Dialog - Only shown if user has change_status permission */}
+      {hasPermission("change_status") && (
+        <Dialog open={statusDialog.isOpen} onOpenChange={closeStatusDialog}>
+          <DialogContent className={`sm:max-w-md ${statusAttr.color}`}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <div
+                  className={`p-2 rounded-full ${
+                    statusAttr.status === "CANCELLED"
+                      ? "bg-red-100"
+                      : statusAttr.status === "SELESAI"
+                      ? "bg-green-100"
+                      : statusAttr.status === "BERANGKAT"
+                      ? "bg-blue-100"
+                      : "bg-amber-100"
+                  }`}
+                >
+                  {statusAttr.icon}
+                </div>
+                <span>{statusAttr.title}</span>
+              </DialogTitle>
+              <DialogDescription>{statusAttr.description}</DialogDescription>
+            </DialogHeader>
+
+            {statusDialog.status === "CANCELLED" && (
+              <div className="py-4">
+                <Label htmlFor="cancelNotes" className="mb-2 block">
+                  Alasan Pembatalan
+                </Label>
+                <Input
+                  id="cancelNotes"
+                  value={statusDialog.notes}
+                  onChange={(e) =>
+                    setStatusDialog((prev) => ({
+                      ...prev,
+                      notes: e.target.value,
+                    }))
+                  }
+                  placeholder="Masukkan alasan pembatalan"
+                  className="w-full"
+                  required={statusDialog.status === "CANCELLED"}
+                />
               </div>
-              <span>{statusAttr.title}</span>
-            </DialogTitle>
-            <DialogDescription>{statusAttr.description}</DialogDescription>
-          </DialogHeader>
+            )}
 
-          {statusDialog.status === "CANCELLED" && (
-            <div className="py-4">
-              <Label htmlFor="cancelNotes" className="mb-2 block">
-                Alasan Pembatalan
-              </Label>
-              <Input
-                id="cancelNotes"
-                value={statusDialog.notes}
-                onChange={(e) =>
-                  setStatusDialog((prev) => ({
-                    ...prev,
-                    notes: e.target.value,
-                  }))
+            <DialogFooter className="sm:justify-end">
+              <Button type="button" variant="outline" onClick={closeStatusDialog}>
+                Batal
+              </Button>
+              <Button
+                type="button"
+                className={statusAttr.button}
+                onClick={handleStatusChange}
+                disabled={
+                  statusDialog.status === "CANCELLED" && !statusDialog.notes
                 }
-                placeholder="Masukkan alasan pembatalan"
-                className="w-full"
-                required={statusDialog.status === "CANCELLED"}
-              />
-            </div>
-          )}
-
-          <DialogFooter className="sm:justify-end">
-            <Button type="button" variant="outline" onClick={closeStatusDialog}>
-              Batal
-            </Button>
-            <Button
-              type="button"
-              className={statusAttr.button}
-              onClick={handleStatusChange}
-              disabled={
-                statusDialog.status === "CANCELLED" && !statusDialog.notes
-              }
-            >
-              Konfirmasi
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              >
+                Konfirmasi
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

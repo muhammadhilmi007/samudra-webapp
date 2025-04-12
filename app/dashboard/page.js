@@ -126,22 +126,28 @@ const ActivityItem = ({ title, description, time, status }) => {
 export default function DashboardPage() {
   const { user } = useSelector((state) => state.auth)
   const [loadingStats, setLoadingStats] = useState(true)
+  const [greeting, setGreeting] = useState('Selamat Datang')
 
   useEffect(() => {
+    // Update greeting after component mounts (client-side only)
+    if (user?.nama) {
+      setGreeting(`Selamat Datang, ${user.nama}`)
+    }
+
     // Simulate fetching data
     const timer = setTimeout(() => {
       setLoadingStats(false)
     }, 1000)
 
     return () => clearTimeout(timer)
-  }, [])
+  }, [user?.nama])
 
   return (
     <div className="space-y-6">
       {/* Welcome message */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Selamat Datang, {user?.nama || 'User'}
+          {greeting}
         </h1>
         <p className="text-muted-foreground">
           Ini adalah dashboard utama Samudra ERP. Pantau metrik bisnis dan aktivitas terbaru.
