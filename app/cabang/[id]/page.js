@@ -11,6 +11,8 @@ import {
 } from "@/lib/redux/slices/cabangSlice";
 import { fetchDivisions } from "@/lib/redux/slices/divisiSlice";
 import { Button } from "@/components/ui/button";
+import { logout, hasAccess } from "@/lib/auth";
+import AuthGuard from "@/components/auth/auth-guard";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -33,7 +35,8 @@ import Link from "next/link";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-export default function EditCabangPage({ params }) {
+// Rename the main component to be wrapped with AuthGuard later
+function EditCabangContent({ params }) {
   const unwrappedParams = React.use(params);
   const branchId = unwrappedParams.id;
   const router = useRouter();
@@ -44,15 +47,9 @@ export default function EditCabangPage({ params }) {
   const { divisions, loading: divisionsLoading } = useSelector(
     (state) => state.divisi
   );
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
 
   const [formData, setFormData] = useState({
     namaCabang: "",
@@ -200,10 +197,10 @@ export default function EditCabangPage({ params }) {
     }
   };
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Actual logout function using the auth system
+  const handleLogout = async () => {
+    await dispatch(logout());
+    router.push('/login');
   };
 
   const handleDivisionChange = (value) => {
@@ -556,5 +553,17 @@ export default function EditCabangPage({ params }) {
         </main>
       </div>
     </div>
+  );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function EditCabangPage({ params }) {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'branches', action: 'edit' }}
+      redirectTo="/unauthorized"
+    >
+      <EditCabangContent params={params} />
+    </AuthGuard>
   );
 }

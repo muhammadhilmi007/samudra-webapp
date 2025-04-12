@@ -22,6 +22,7 @@ import {
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { useToast } from "@/lib/hooks/use-toast";
 import { ArrowLeft, Save, Loader2, AlertCircle } from "lucide-react";
+import { hasAccess } from "@/lib/auth";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/layout/header";
@@ -76,12 +77,8 @@ export default function AddPickupPage() {
       (employee?.role || "").toLowerCase().includes("helper")
   );
 
-  // Mock user data (replace with actual auth logic in production)
-  const user = useSelector((state) => state.auth.currentUser) || {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
+  // Get authenticated user data from Redux store
+  const { user, isAuthenticated, loading: authLoading } = useSelector((state) => state.auth);
 
   useEffect(() => {
     // If user is logged in and has a branch ID, fetch required data
@@ -161,6 +158,81 @@ export default function AddPickupPage() {
     { label: "Pengambilan", href: "/pengambilan" },
     { label: "Tambah Pengambilan", href: "/pengambilan/tambah" },
   ];
+
+  // Handle authentication loading state
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-7xl flex items-center justify-center h-full">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="mt-2 text-sm text-gray-600">Memuat data pengguna...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated && !authLoading) {
+    // Use client-side redirect
+    useEffect(() => {
+      router.push('/login');
+    }, [router]);
+    
+    // Return the same layout structure as other conditions to prevent hydration mismatch
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-7xl flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="mt-2 text-sm text-gray-600">Redirecting to login...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has permission to create pickups
+  const canCreatePickup = hasAccess("pickups", "create");
+  
+  if (!canCreatePickup) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6">
+              <Breadcrumbs items={breadcrumbItems} />
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Anda tidak memiliki izin untuk membuat pengambilan baru.
+                </AlertDescription>
+              </Alert>
+              <div className="flex justify-center">
+                <Button asChild variant="outline">
+                  <Link href="/pengambilan">Kembali ke Daftar Pengambilan</Link>
+                </Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50">

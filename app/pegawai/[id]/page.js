@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { use } from "react"; // Add this import
+import { logout, hasAccess } from "@/lib/auth";
+import AuthGuard from "@/components/auth/auth-guard";
 import {
   fetchEmployeeById,
   updateEmployee,
@@ -39,7 +41,8 @@ import Link from "next/link";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-export default function EditPegawaiPage({ params }) {
+// Rename the main component to be wrapped with AuthGuard later
+function EditPegawaiContent({ params }) {
   const employeeId = use(params).id;
   const router = useRouter();
   const dispatch = useDispatch();
@@ -52,18 +55,12 @@ export default function EditPegawaiPage({ params }) {
   const { branches, loading: branchesLoading } = useSelector(
     (state) => state.cabang
   );
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
   const fileInputRef = useRef(null);
   const ktpFileInputRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
 
   const [formData, setFormData] = useState({
     nama: "",
@@ -392,10 +389,10 @@ export default function EditPegawaiPage({ params }) {
     );
   }
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Actual logout function using the auth system
+  const handleLogout = async () => {
+    await dispatch(logout());
+    router.push('/login');
   };
 
   return (
@@ -918,5 +915,17 @@ export default function EditPegawaiPage({ params }) {
         </main>
       </div>
     </div>
+  );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function EditPegawaiPage({ params }) {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'employees', action: 'edit' }}
+      redirectTo="/unauthorized"
+    >
+      <EditPegawaiContent params={params} />
+    </AuthGuard>
   );
 }

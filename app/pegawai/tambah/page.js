@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
+import { logout, hasAccess } from "@/lib/auth";
+import AuthGuard from "@/components/auth/auth-guard";
 import {
   createEmployee,
   fetchRoles,
@@ -35,7 +37,8 @@ import Link from "next/link";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-export default function TambahPegawaiPage() {
+// Rename the main component to be wrapped with AuthGuard later
+function TambahPegawaiContent() {
   const router = useRouter();
   const dispatch = useDispatch();
   const { loading, error, success } = useSelector((state) => state.pegawai);
@@ -45,18 +48,12 @@ export default function TambahPegawaiPage() {
   const { branches, loading: branchesLoading } = useSelector(
     (state) => state.cabang
   );
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
   const fileInputRef = useRef(null);
   const ktpFileInputRef = useRef(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
 
   const [formData, setFormData] = useState({
     nama: "",
@@ -327,10 +324,10 @@ export default function TambahPegawaiPage() {
     }
   };
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Actual logout function using the auth system
+  const handleLogout = async () => {
+    await dispatch(logout());
+    router.push('/login');
   };
 
   return (
@@ -831,5 +828,17 @@ export default function TambahPegawaiPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function TambahPegawaiPage() {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'employees', action: 'create' }}
+      redirectTo="/unauthorized"
+    >
+      <TambahPegawaiContent />
+    </AuthGuard>
   );
 }

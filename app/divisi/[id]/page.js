@@ -24,14 +24,18 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
+import { logout, hasAccess } from '@/lib/auth'
+import AuthGuard from '@/components/auth/auth-guard'
 
-export default function EditDivisiPage({ params }) {
+// Rename the main component to be wrapped with AuthGuard later
+function EditDivisiContent({ params }) {
   const divisionId = React.use(params).id;
   const router = useRouter();
   const dispatch = useDispatch();
   const { currentDivision, loading, error, success } = useSelector(
     (state) => state.divisi
   );
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -41,14 +45,6 @@ export default function EditDivisiPage({ params }) {
   const [formErrors, setFormErrors] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-    // Mock user data - in a real app, this would come from your auth system
-    const user = {
-      nama: 'Admin User',
-      jabatan: 'Administrator',
-      email: 'admin@example.com'
-    }
-    
 
   useEffect(() => {
     const fetchData = async () => {
@@ -137,10 +133,10 @@ export default function EditDivisiPage({ params }) {
     }
   };
 
-   // Mock logout function
-   const handleLogout = () => {
-    console.log('User logged out')
-    // Implement actual logout logic here
+  // Actual logout function using the auth system
+  const handleLogout = async () => {
+    await dispatch(logout())
+    router.push('/login')
   }
 
   if (isLoading || !currentDivision) {
@@ -230,4 +226,16 @@ export default function EditDivisiPage({ params }) {
       </div>
     </div>
   );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function EditDivisiPage({ params }) {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'divisions', action: 'edit' }}
+      redirectTo="/unauthorized"
+    >
+      <EditDivisiContent params={params} />
+    </AuthGuard>
+  )
 }

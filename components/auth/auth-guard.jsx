@@ -5,10 +5,31 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSelector, useDispatch } from 'react-redux';
 import { getMe } from '@/lib/redux/slices/authSlice';
+import { hasRole, hasPermission, hasAccess } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
 
-export default function AuthGuard({ children, requiredRoles = [], requiredPermissions = [] }) {
+/**
+ * AuthGuard component for protecting routes based on authentication and authorization
+ * 
+ * @param {Object} props
+ * @param {React.ReactNode} props.children - Child components to render if authorized
+ * @param {string[]} [props.requiredRoles=[]] - Roles required to access the route
+ * @param {string[]} [props.requiredPermissions=[]] - Permissions required to access the route
+ * @param {Object} [props.requiredAccess] - Resource-based access control
+ * @param {string} [props.requiredAccess.resource] - Resource to check access for
+ * @param {string} [props.requiredAccess.action] - Action to check access for
+ * @param {string} [props.redirectTo="/login"] - Where to redirect if unauthorized
+ * @returns {React.ReactNode}
+ */
+export default function AuthGuard({ 
+  children, 
+  requiredRoles = [], 
+  requiredPermissions = [],
+  requiredAccess = null,
+  redirectTo = "/login"
+}) {
   const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
   const { isAuthenticated, user } = useSelector((state) => state.auth);
@@ -20,10 +41,37 @@ export default function AuthGuard({ children, requiredRoles = [], requiredPermis
         if (!isAuthenticated) {
           await dispatch(getMe()).unwrap();
         }
+
+        // Check authorization based on roles and permissions
+        let isAuthorized = true;
+
+        // Check roles if specified
+        if (requiredRoles.length > 0) {
+          isAuthorized = isAuthorized && requiredRoles.some(role => hasRole(role));
+        }
+
+        // Check permissions if specified
+        if (requiredPermissions.length > 0) {
+          isAuthorized = isAuthorized && requiredPermissions.some(perm => hasPermission(perm));
+        }
+
+        // Check resource-based access if specified
+        if (requiredAccess && requiredAccess.resource && requiredAccess.action) {
+          isAuthorized = isAuthorized && hasAccess(requiredAccess.resource, requiredAccess.action);
+        }
+
+        setAuthorized(isAuthorized);
+
+        // Redirect if not authorized
+        if (!isAuthorized) {
+          router.push(requiredRoles.length > 0 || requiredPermissions.length > 0 || requiredAccess 
+            ? '/unauthorized' 
+            : redirectTo);
+        }
       } catch (error) {
+        console.error('Authentication check failed:', error);
         // Redirect to login if authentication fails
-        router.push('/login');
-        return;
+        router.push(redirectTo);
       } finally {
         setLoading(false);
       }
@@ -32,7 +80,15 @@ export default function AuthGuard({ children, requiredRoles = [], requiredPermis
     if (typeof window !== 'undefined') {
       checkAuth();
     }
-  }, [dispatch, isAuthenticated, router]);
+  }, [
+    dispatch, 
+    isAuthenticated, 
+    router, 
+    requiredRoles, 
+    requiredPermissions, 
+    requiredAccess, 
+    redirectTo
+  ]);
 
   // Show loading spinner while checking auth
   if (loading) {
@@ -43,22 +99,6 @@ export default function AuthGuard({ children, requiredRoles = [], requiredPermis
     );
   }
 
-  // Check if the user has the required role
-  if (requiredRoles.length > 0 && !requiredRoles.includes(user?.role)) {
-    router.push('/unauthorized');
-    return null;
-  }
-
-  // Check if the user has at least one of the required permissions
-  if (
-    requiredPermissions.length > 0 &&
-    user?.permissions &&
-    !requiredPermissions.some(perm => user.permissions.includes(perm))
-  ) {
-    router.push('/unauthorized');
-    return null;
-  }
-
-  // User is authenticated and has required roles/permissions
-  return children;
+  // User is authenticated and authorized
+  return authorized ? children : null;
 }

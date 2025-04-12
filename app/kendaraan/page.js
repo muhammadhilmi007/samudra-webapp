@@ -1,12 +1,13 @@
 // app/kendaraan/page.js
 "use client";
-
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchVehicles, deleteVehicle } from "@/lib/redux/slices/vehicleSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
 import { fetchEmployees } from "@/lib/redux/slices/pegawaiSlice";
+import { logout } from "@/lib/redux/slices/authSlice";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -72,12 +73,16 @@ export default function VehicleListPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Mock user data (replace with actual auth logic)
-  const mockUser = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
+  // Get user data from Redux auth state
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const router = useRouter();
+  
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/dashboard" },
@@ -265,9 +270,18 @@ export default function VehicleListPage() {
     return 0;
   });
 
-  const handleLogout = () => {
-    // Implement logout functionality
-    console.log("Logging out...");
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+      router.push('/');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Error",
+        description: "Gagal logout. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -276,7 +290,7 @@ export default function VehicleListPage() {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={mockUser}
+        user={user}
       />
 
       {/* Main Content */}
@@ -284,7 +298,7 @@ export default function VehicleListPage() {
         {/* Header */}
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
-          user={mockUser}
+          user={user}
           onLogout={handleLogout}
         />
 

@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import {
   fetchPickups,
   updatePickupStatus,
 } from "@/lib/redux/slices/pickupSlice";
+import { getMe } from "@/lib/redux/slices/authSlice";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import DataTable from "@/components/data-tables/data-table";
@@ -37,6 +39,7 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import AuthGuard from "@/components/auth/auth-guard";
 import {
   Select,
   SelectContent,
@@ -60,9 +63,17 @@ import {
 } from "@/components/ui/dialog";
 import { vehicleAPI, pegawaiAPI, cabangAPI } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  HasPermission,
+  HasRole,
+  HasAccess,
+} from "@/components/auth/rbac-guard";
+import { hasPermission, hasRole, hasAccess, logout } from "@/lib/auth";
 
-export default function PickupsPage() {
+// Rename the main component to be wrapped with AuthGuard later
+function PickupContent() {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { toast } = useToast();
   const {
     pickups = [],
@@ -89,30 +100,25 @@ export default function PickupsPage() {
     notes: "",
   });
 
-  // Get user data from Redux store
-  const user = useSelector((state) => state.auth.currentUser) || {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-    role: "admin", // Default role
-  };
-  
-  // Role-based permission check utility
-  const hasPermission = (action) => {
-    const role = user?.role?.toLowerCase() || "guest";
-    
-    // Define permissions for different roles
-    const permissions = {
-      admin: ["view", "create", "edit", "delete", "change_status"],
-      manager: ["view", "create", "edit", "change_status"],
-      operator: ["view", "create", "change_status"],
-      driver: ["view", "change_status"],
-      guest: ["view"]
-    };
-    
-    // Check if user's role has permission for the action
-    return permissions[role]?.includes(action) || false;
-  };
+  // Get auth state from Redux store
+  const {
+    user,
+    isAuthenticated,
+    loading: authLoading,
+  } = useSelector((state) => state.auth);
+
+  // Check authentication on component mount
+  useEffect(() => {
+    // Verify token and get latest user data if not already authenticated
+    if (!authLoading && !isAuthenticated) {
+      dispatch(getMe())
+        .unwrap()
+        .catch(() => {
+          // If getMe fails, redirect to login
+          router.push("/login");
+        });
+    }
+  }, [dispatch, isAuthenticated, authLoading, router]);
 
   // Improved filters state with defaults
   const [filters, setFilters] = useState({
@@ -373,7 +379,9 @@ export default function PickupsPage() {
                 {row.original.pengirimId.nama || "-"}
               </Link>
             ) : (
-              <span className="text-gray-500">ID: {row.original.pengirimId}</span>
+              <span className="text-gray-500">
+                ID: {row.original.pengirimId}
+              </span>
             )
           ) : (
             <span className="text-gray-500">
@@ -431,7 +439,7 @@ export default function PickupsPage() {
         <div className="flex items-center gap-2">
           <User className="h-4 w-4 text-gray-500" />
           {row.original.supirId ? (
-            typeof row.original.supirId === 'object' ? (
+            typeof row.original.supirId === "object" ? (
               <Link
                 href={`/pegawai/${row.original.supirId._id}`}
                 className="text-gray-900 hover:text-blue-600"
@@ -442,7 +450,9 @@ export default function PickupsPage() {
               <span className="text-gray-500">ID: {row.original.supirId}</span>
             )
           ) : (
-            <span className="text-gray-500">{row.original.namaSupir || "-"}</span>
+            <span className="text-gray-500">
+              {row.original.namaSupir || "-"}
+            </span>
           )}
         </div>
       ),
@@ -454,7 +464,7 @@ export default function PickupsPage() {
         <div className="flex items-center gap-2">
           <Truck className="h-4 w-4 text-gray-500" />
           {row.original.kendaraanId ? (
-            typeof row.original.kendaraanId === 'object' ? (
+            typeof row.original.kendaraanId === "object" ? (
               <Link
                 href={`/kendaraan/${row.original.kendaraanId._id}`}
                 className="text-gray-900 hover:text-blue-600"
@@ -466,10 +476,14 @@ export default function PickupsPage() {
                 }`}
               </Link>
             ) : (
-              <span className="text-gray-500">ID: {row.original.kendaraanId}</span>
+              <span className="text-gray-500">
+                ID: {row.original.kendaraanId}
+              </span>
             )
           ) : (
-            <span className="text-gray-500">{row.original.namaKendaraan || "-"}</span>
+            <span className="text-gray-500">
+              {row.original.namaKendaraan || "-"}
+            </span>
           )}
         </div>
       ),
@@ -522,9 +536,9 @@ export default function PickupsPage() {
                 </Link>
               </DropdownMenuItem>
             )}
-            
+
             {/* Edit - only for users with edit permission */}
-            {hasPermission("edit") && (
+            {hasAccess("pickups", "edit") && (
               <DropdownMenuItem asChild>
                 <Link
                   href={`/pengambilan/edit/${row.original._id}`}
@@ -541,7 +555,9 @@ export default function PickupsPage() {
               <>
                 {row.original.status === "PENDING" && (
                   <DropdownMenuItem
-                    onClick={() => openStatusDialog(row.original._id, "BERANGKAT")}
+                    onClick={() =>
+                      openStatusDialog(row.original._id, "BERANGKAT")
+                    }
                     className="text-blue-600"
                   >
                     <Truck className="mr-2 h-4 w-4" />
@@ -551,7 +567,9 @@ export default function PickupsPage() {
 
                 {row.original.status === "BERANGKAT" && (
                   <DropdownMenuItem
-                    onClick={() => openStatusDialog(row.original._id, "SELESAI")}
+                    onClick={() =>
+                      openStatusDialog(row.original._id, "SELESAI")
+                    }
                     className="text-green-600"
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
@@ -561,7 +579,9 @@ export default function PickupsPage() {
 
                 {["PENDING", "BERANGKAT"].includes(row.original.status) && (
                   <DropdownMenuItem
-                    onClick={() => openStatusDialog(row.original._id, "CANCELLED")}
+                    onClick={() =>
+                      openStatusDialog(row.original._id, "CANCELLED")
+                    }
                     className="text-red-600"
                   >
                     <XCircle className="mr-2 h-4 w-4" />
@@ -571,7 +591,9 @@ export default function PickupsPage() {
 
                 {row.original.status === "CANCELLED" && (
                   <DropdownMenuItem
-                    onClick={() => openStatusDialog(row.original._id, "PENDING")}
+                    onClick={() =>
+                      openStatusDialog(row.original._id, "PENDING")
+                    }
                     className="text-amber-600"
                   >
                     <Clock className="mr-2 h-4 w-4" />
@@ -658,13 +680,58 @@ export default function PickupsPage() {
 
   const statusAttr = getStatusAttributes(statusDialog.status);
 
+  // Handle authentication loading state
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-7xl flex items-center justify-center h-full">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Memuat data pengguna...
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+  // Redirect if not authenticated - this is now handled by the useEffect above
+  // but we still need this check for SSR and initial render
+  if (!isAuthenticated && !authLoading) {
+    // Return the same layout structure as other conditions to prevent hydration mismatch
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-7xl flex items-center justify-center h-full">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="mt-2 text-sm text-gray-600">
+                  Memeriksa autentikasi...
+                </p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   // Error handling UI
   if (error) {
     return (
       <div className="flex min-h-screen bg-gray-50">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <Header onMenuButtonClick={() => setSidebarOpen(true)} />
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
           <main className="flex-1 overflow-y-auto p-4 md:p-6">
             <div className="mx-auto max-w-7xl">
               <Breadcrumbs items={breadcrumbItems} />
@@ -697,10 +764,20 @@ export default function PickupsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+      />
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
+        <Header
+          onMenuButtonClick={() => setSidebarOpen(true)}
+          user={user}
+          onLogout={async () => {
+            await dispatch(logout());
+            router.push("/login");
+          }}
+        />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="mx-auto max-w-lxl space-y-6">
@@ -716,7 +793,7 @@ export default function PickupsPage() {
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                {hasPermission("create") && (
+                <HasAccess resource="pickups" action="create">
                   <Button
                     asChild
                     className="w-full sm:w-auto bg-primary hover:bg-primary/90"
@@ -726,13 +803,13 @@ export default function PickupsPage() {
                       Tambah Pengambilan
                     </Link>
                   </Button>
-                )}
-                {hasPermission("view") && (
+                </HasAccess>
+                <HasPermission permission="view">
                   <Button variant="outline" className="w-full sm:w-auto">
                     <FileDown className="mr-2 h-4 w-4" />
                     Ekspor Data
                   </Button>
-                )}
+                </HasPermission>
               </div>
             </div>
 
@@ -1110,9 +1187,8 @@ export default function PickupsPage() {
           </div>
         </main>
       </div>
-
       {/* Status Change Dialog - Only shown if user has change_status permission */}
-      {hasPermission("change_status") && (
+      <HasPermission permission="change_status">
         <Dialog open={statusDialog.isOpen} onOpenChange={closeStatusDialog}>
           <DialogContent className={`sm:max-w-md ${statusAttr.color}`}>
             <DialogHeader>
@@ -1157,7 +1233,11 @@ export default function PickupsPage() {
             )}
 
             <DialogFooter className="sm:justify-end">
-              <Button type="button" variant="outline" onClick={closeStatusDialog}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeStatusDialog}
+              >
                 Batal
               </Button>
               <Button
@@ -1173,7 +1253,19 @@ export default function PickupsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      )}
+      </HasPermission>
     </div>
+  );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function PickupsPage() {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: "pickups", action: "view" }}
+      redirectTo="/unauthorized"
+    >
+      <PickupContent />
+    </AuthGuard>
   );
 }

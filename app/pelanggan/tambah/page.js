@@ -3,23 +3,39 @@
 import CustomerForm from "@/components/forms/customer-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
-import { useState } from 'react'
+import { useState, useEffect } from 'react';
+import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "@/lib/redux/slices/authSlice";
+import { useToast } from "@/lib/hooks/use-toast";
 import Sidebar from "@/components/layout/sidebar";
 
 export default function TambahPelangganPage() {
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+  const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
+  // Check authentication
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, router]);
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Logout function
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+      router.push('/login');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal logout. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
 
   const breadcrumbItems = [
@@ -27,6 +43,11 @@ export default function TambahPelangganPage() {
     { title: "Pelanggan", link: "/pelanggan" },
     { title: "Tambah Pelanggan", link: "/pelanggan/tambah", active: true },
   ];
+
+  // If not authenticated and still loading, show nothing
+  if (!isAuthenticated && !user) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">

@@ -42,6 +42,7 @@ export default function LoginForm() {
       // Validate inputs
       if (!formData.username || !formData.password) {
         setError('Username dan password harus diisi');
+        setLoading(false);
         return;
       }
       
@@ -51,12 +52,14 @@ export default function LoginForm() {
       // Login successful
       toast({
         title: 'Login Berhasil',
-        description: 'Selamat datang di Samudra ERP!',
+        description: `Selamat datang, ${resultAction.user.nama || resultAction.user.username}!`,
         variant: 'success',
       });
       
-      // Redirect to dashboard
-      router.push('/dashboard');
+      // Redirect to dashboard or intended page
+      const intendedUrl = localStorage.getItem('intendedUrl') || '/dashboard';
+      localStorage.removeItem('intendedUrl'); // Clear the stored URL
+      router.push(intendedUrl);
     } catch (err) {
       setError(err || 'Login gagal, silakan coba lagi.');
       toast({
@@ -87,6 +90,8 @@ export default function LoginForm() {
           required
           value={formData.username}
           onChange={handleInputChange}
+          autoComplete="username"
+          disabled={loading}
         />
       </div>
       
@@ -94,7 +99,7 @@ export default function LoginForm() {
         <div className="flex items-center justify-between">
           <Label htmlFor="password">Password</Label>
           <Link 
-            href="#" 
+            href="/forgot-password" 
             className="text-xs text-blue-600 hover:text-blue-800"
           >
             Lupa password?
@@ -108,6 +113,8 @@ export default function LoginForm() {
           required
           value={formData.password}
           onChange={handleInputChange}
+          autoComplete="current-password"
+          disabled={loading}
         />
       </div>
       

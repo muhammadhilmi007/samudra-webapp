@@ -1,21 +1,28 @@
 // app/kendaraan/tambah/page.js
 "use client";
-
 import VehicleForm from "@/components/forms/vehicle-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { logout } from "@/lib/redux/slices/authSlice";
+import { useToast } from "@/lib/hooks/use-toast";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
 export default function AddVehiclePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const { toast } = useToast();
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
 
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/dashboard" },
@@ -23,10 +30,19 @@ export default function AddVehiclePage() {
     { title: "Tambah Kendaraan", link: "/kendaraan/tambah", active: true },
   ];
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Implement actual logout function
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+      router.push('/');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Error",
+        description: "Gagal logout. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

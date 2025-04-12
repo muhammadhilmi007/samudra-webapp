@@ -53,6 +53,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { hasPermission, hasAccess } from "@/lib/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,12 +78,8 @@ export default function PickupDetailPage() {
   // Get data from Redux store
   const { pickup, loading, error } = useSelector((state) => state.pickup);
 
-  // Mock user data (replace with actual auth logic in production)
-  const user = useSelector((state) => state.auth.currentUser) || {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
+  // Get authenticated user data from Redux store
+  const { user, isAuthenticated, loading: authLoading } = useSelector((state) => state.auth);
 
   // Load pickup data
   useEffect(() => {
@@ -262,7 +259,82 @@ export default function PickupDetailPage() {
 
   const statusAttr = getStatusAttributes(statusDialog.status);
 
-  // Show loading state
+  // Handle authentication loading state
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-7xl flex items-center justify-center h-full">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="mt-2 text-sm text-gray-600">Memuat data pengguna...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!isAuthenticated && !authLoading) {
+    // Use client-side redirect
+    useEffect(() => {
+      router.push('/login');
+    }, [router]);
+    
+    // Return the same layout structure as other conditions to prevent hydration mismatch
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-7xl flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="mt-2 text-sm text-gray-600">Redirecting to login...</p>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user has permission to view pickups
+  const canViewPickup = hasPermission("view") || hasAccess("pickups", "view");
+  
+  if (!canViewPickup) {
+    return (
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} />
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <Header onMenuButtonClick={() => setSidebarOpen(true)} user={user} />
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <div className="mx-auto max-w-4xl space-y-6">
+              <Breadcrumbs items={breadcrumbItems} />
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Anda tidak memiliki izin untuk melihat detail pengambilan.
+                </AlertDescription>
+              </Alert>
+              <div className="flex justify-center">
+                <Button asChild variant="outline">
+                  <Link href="/dashboard">Kembali ke Dashboard</Link>
+                </Button>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state for pickup data
   if (loading) {
     return (
       <div className="flex min-h-screen bg-gray-50">
@@ -361,68 +433,76 @@ export default function PickupDetailPage() {
                 </h1>
               </div>
               <div className="flex gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      Ubah Status
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[180px]">
-                    {pickup?.status === "PENDING" && (
-                      <DropdownMenuItem
-                        onClick={() => openStatusDialog("BERANGKAT")}
-                        className="text-blue-600"
-                      >
-                        <Truck className="mr-2 h-4 w-4" />
-                        <span>Berangkat</span>
-                      </DropdownMenuItem>
-                    )}
+                {hasPermission("change_status") && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline">
+                        Ubah Status
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[180px]">
+                      {pickup?.status === "PENDING" && (
+                        <DropdownMenuItem
+                          onClick={() => openStatusDialog("BERANGKAT")}
+                          className="text-blue-600"
+                        >
+                          <Truck className="mr-2 h-4 w-4" />
+                          <span>Berangkat</span>
+                        </DropdownMenuItem>
+                      )}
 
-                    {pickup?.status === "BERANGKAT" && (
-                      <DropdownMenuItem
-                        onClick={() => openStatusDialog("SELESAI")}
-                        className="text-green-600"
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        <span>Selesai</span>
-                      </DropdownMenuItem>
-                    )}
+                      {pickup?.status === "BERANGKAT" && (
+                        <DropdownMenuItem
+                          onClick={() => openStatusDialog("SELESAI")}
+                          className="text-green-600"
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          <span>Selesai</span>
+                        </DropdownMenuItem>
+                      )}
 
-                    {["PENDING", "BERANGKAT"].includes(pickup?.status) && (
-                      <DropdownMenuItem
-                        onClick={() => openStatusDialog("CANCELLED")}
-                        className="text-red-600"
-                      >
-                        <XCircle className="mr-2 h-4 w-4" />
-                        <span>Batalkan</span>
-                      </DropdownMenuItem>
-                    )}
+                      {["PENDING", "BERANGKAT"].includes(pickup?.status) && (
+                        <DropdownMenuItem
+                          onClick={() => openStatusDialog("CANCELLED")}
+                          className="text-red-600"
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          <span>Batalkan</span>
+                        </DropdownMenuItem>
+                      )}
 
-                    {pickup?.status === "CANCELLED" && (
-                      <DropdownMenuItem
-                        onClick={() => openStatusDialog("PENDING")}
-                        className="text-amber-600"
-                      >
-                        <Clock className="mr-2 h-4 w-4" />
-                        <span>Aktifkan Kembali</span>
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button variant="outline" asChild>
-                  <Link href={`/pengambilan/edit/${id}`}>
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </Link>
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={() => setDeleteDialog(true)}
-                  data-testid="delete-button"
-                >
+                      {pickup?.status === "CANCELLED" && (
+                        <DropdownMenuItem
+                          onClick={() => openStatusDialog("PENDING")}
+                          className="text-amber-600"
+                        >
+                          <Clock className="mr-2 h-4 w-4" />
+                          <span>Aktifkan Kembali</span>
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
+                {hasAccess("pickups", "edit") && (
+                  <Button variant="outline" asChild>
+                    <Link href={`/pengambilan/edit/${id}`}>
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Link>
+                  </Button>
+                )}
+                
+                {hasAccess("pickups", "delete") && (
+                  <Button
+                    variant="destructive"
+                    onClick={() => setDeleteDialog(true)}
+                    data-testid="delete-button"
+                  >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Hapus
                 </Button>
+                )}
               </div>
             </div>
 
@@ -586,8 +666,9 @@ export default function PickupDetailPage() {
         </main>
       </div>
 
-      {/* Status Change Dialog */}
-      <Dialog open={statusDialog.isOpen} onOpenChange={closeStatusDialog}>
+      {/* Status Change Dialog - Only shown if user has change_status permission */}
+      {hasPermission("change_status") && (
+        <Dialog open={statusDialog.isOpen} onOpenChange={closeStatusDialog}>
         <DialogContent className={`sm:max-w-md ${statusAttr.color}`}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -647,9 +728,11 @@ export default function PickupDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+      {/* Delete Confirmation Dialog - Only shown if user has delete permission */}
+      {hasAccess("pickups", "delete") && (
+        <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -694,6 +777,7 @@ export default function PickupDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      )}
     </div>
   );
 }

@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { logout, hasAccess } from "@/lib/auth";
+import AuthGuard from "@/components/auth/auth-guard";
 import {
   fetchEmployees,
   deleteEmployee,
@@ -54,12 +57,15 @@ import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-export default function PegawaiPage() {
+// Rename the main component to be wrapped with AuthGuard later
+function PegawaiContent() {
+  const router = useRouter();
   const dispatch = useDispatch();
   const { employees, loading, error, success } = useSelector(
     (state) => state.pegawai
   );
   const { branches } = useSelector((state) => state.cabang);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -69,13 +75,6 @@ export default function PegawaiPage() {
   const [employeeToDelete, setEmployeeToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Mock user data (replace with actual auth logic)
-  const mockUser = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
 
   useEffect(() => {
     // Fetch data with filters
@@ -178,7 +177,7 @@ export default function PegawaiPage() {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={mockUser}
+        user={user}
       />
 
       {/* Main Content */}
@@ -186,8 +185,11 @@ export default function PegawaiPage() {
         {/* Header */}
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
-          user={mockUser}
-          onLogout={() => console.log("Logging out...")}
+          user={user}
+          onLogout={async () => {
+            await dispatch(logout());
+            router.push('/login');
+          }}
         />
 
         {/* Page Content */}
@@ -412,5 +414,17 @@ export default function PegawaiPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function PegawaiPage() {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'employees', action: 'view' }}
+      redirectTo="/unauthorized"
+    >
+      <PegawaiContent />
+    </AuthGuard>
   );
 }

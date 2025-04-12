@@ -10,6 +10,8 @@ import {
   clearCustomerState,
 } from "@/lib/redux/slices/customerSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
+import { logout } from "@/lib/redux/slices/authSlice";
+import { useToast } from "@/lib/hooks/use-toast";
 import CustomerForm from "@/components/forms/customer-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,19 +48,21 @@ export default function PelangganDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const dispatch = useDispatch();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("detail");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
 
   const { currentCustomer, loading, customerSTTs, customerPickups } =
     useSelector((state) => state.customer);
   const { branches } = useSelector((state) => state.cabang);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
+
+  // Check authentication
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, router]);
 
   // Improve the useEffect to handle data fetching and cleanup
   // Update the useEffect hook
@@ -117,10 +121,18 @@ export default function PelangganDetailPage() {
     return branch ? branch.namaCabang : "-";
   };
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Logout function
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+      router.push('/login');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal logout. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Function to get customer type display name
@@ -166,6 +178,11 @@ export default function PelangganDetailPage() {
 
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
+
+  // If not authenticated, show nothing
+  if (!isAuthenticated && !user) {
+    return null;
+  }
 
   if (loading && !currentCustomer) {
     return (

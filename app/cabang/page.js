@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   fetchBranches,
@@ -11,6 +12,8 @@ import {
 } from "@/lib/redux/slices/cabangSlice";
 import { fetchDivisions } from "@/lib/redux/slices/divisiSlice";
 import { Button } from "@/components/ui/button";
+import { logout, hasAccess } from "@/lib/auth";
+import AuthGuard from "@/components/auth/auth-guard";
 import {
   Table,
   TableBody,
@@ -43,12 +46,15 @@ import { formatDate } from "@/lib/utils";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
-export default function CabangPage() {
+// Rename the main component to be wrapped with AuthGuard later
+function CabangContent() {
+  const router = useRouter();
   const dispatch = useDispatch();
   const { branches, loading, error, success } = useSelector(
     (state) => state.cabang
   );
   const { divisions } = useSelector((state) => state.divisi);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,13 +63,6 @@ export default function CabangPage() {
   const [branchToDelete, setBranchToDelete] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [divisionsLoaded, setDivisionsLoaded] = useState(false);
-
-  // Mock user data (replace with actual auth logic)
-  const mockUser = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -121,9 +120,9 @@ export default function CabangPage() {
     }
   };
 
-  const handleLogout = () => {
-    // Implement logout functionality
-    console.log("Logging out...");
+  const handleLogout = async () => {
+    await dispatch(logout());
+    router.push('/login');
   };
 
   const handleClearFilters = () => {
@@ -170,7 +169,7 @@ export default function CabangPage() {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={mockUser}
+        user={user}
       />
 
       {/* Main Content */}
@@ -178,7 +177,7 @@ export default function CabangPage() {
         {/* Header */}
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
-          user={mockUser}
+          user={user}
           onLogout={handleLogout}
         />
 
@@ -337,5 +336,17 @@ export default function CabangPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function CabangPage() {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'branches', action: 'view' }}
+      redirectTo="/unauthorized"
+    >
+      <CabangContent />
+    </AuthGuard>
   );
 }

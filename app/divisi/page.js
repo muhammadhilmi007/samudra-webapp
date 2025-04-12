@@ -3,20 +3,20 @@
 import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
-import { 
-  fetchDivisions, 
-  deleteDivision, 
-  clearError, 
-  clearSuccess 
+import {
+  fetchDivisions,
+  deleteDivision,
+  clearError,
+  clearSuccess
 } from '@/lib/redux/slices/divisiSlice'
 import { Button } from '@/components/ui/button'
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from '@/components/ui/table'
 import {
   AlertDialog,
@@ -34,23 +34,19 @@ import { formatDate } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
+import { logout } from '@/lib/auth'
+import { HasPermission, HasAccess } from '@/components/auth/rbac-guard'
 
 export default function DivisiPage() {
   const dispatch = useDispatch()
   const { divisions = [], loading, error, success } = useSelector((state) => state.divisi)
+  const { user, isAuthenticated } = useSelector((state) => state.auth)
   const { toast } = useToast()
   
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [divisionToDelete, setDivisionToDelete] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  // Mock user data (replace with actual auth logic)
-  const mockUser = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com"
-  }
   
   useEffect(() => {
     dispatch(fetchDivisions())
@@ -89,9 +85,23 @@ export default function DivisiPage() {
     }
   }
   
-  const handleLogout = () => {
-    // Implement logout functionality
-    console.log('Logging out...')
+  const handleLogout = async () => {
+    try {
+      await logout()
+      toast({
+        title: 'Berhasil Logout',
+        description: 'Anda telah berhasil keluar dari sistem',
+        variant: 'default',
+      })
+      // Redirect will happen automatically due to auth state change
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Gagal melakukan logout. Silakan coba lagi.',
+        variant: 'destructive',
+      })
+      console.error('Logout error:', error)
+    }
   }
   
   // Filter divisions based on search query
@@ -102,18 +112,18 @@ export default function DivisiPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
       {/* Sidebar */}
-      <Sidebar 
-        isOpen={sidebarOpen} 
+      <Sidebar
+        isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={mockUser}
+        user={user}
       />
       
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <Header 
-          onMenuButtonClick={() => setSidebarOpen(true)} 
-          user={mockUser}
+        <Header
+          onMenuButtonClick={() => setSidebarOpen(true)}
+          user={user}
           onLogout={handleLogout}
         />
         
@@ -127,12 +137,14 @@ export default function DivisiPage() {
                   Kelola data divisi perusahaan
                 </p>
               </div>
-              <Link href="/divisi/tambah">
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah Divisi
-                </Button>
-              </Link>
+              <HasAccess resource="divisions" action="create">
+                <Link href="/divisi/tambah">
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Tambah Divisi
+                  </Button>
+                </Link>
+              </HasAccess>
             </div>
             
             <div className="space-y-4">
@@ -185,21 +197,25 @@ export default function DivisiPage() {
                             <TableCell className="hidden md:table-cell">{formatDate(division.createdAt)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
-                                <Link href={`/divisi/${division._id}`}>
-                                  <Button variant="outline" size="icon" className="h-8 w-8">
-                                    <Edit className="h-4 w-4" />
-                                    <span className="sr-only">Edit</span>
+                                <HasAccess resource="divisions" action="edit">
+                                  <Link href={`/divisi/${division._id}`}>
+                                    <Button variant="outline" size="icon" className="h-8 w-8">
+                                      <Edit className="h-4 w-4" />
+                                      <span className="sr-only">Edit</span>
+                                    </Button>
+                                  </Link>
+                                </HasAccess>
+                                <HasAccess resource="divisions" action="delete">
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => handleDeleteClick(division)}
+                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete</span>
                                   </Button>
-                                </Link>
-                                <Button 
-                                  variant="outline" 
-                                  size="icon"
-                                  onClick={() => handleDeleteClick(division)}
-                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                  <span className="sr-only">Delete</span>
-                                </Button>
+                                </HasAccess>
                               </div>
                             </TableCell>
                           </TableRow>

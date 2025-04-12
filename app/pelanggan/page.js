@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   fetchCustomers,
@@ -10,6 +11,7 @@ import {
   clearSuccess,
 } from "@/lib/redux/slices/customerSlice";
 import { fetchBranches } from "@/lib/redux/slices/cabangSlice";
+import { logout } from "@/lib/redux/slices/authSlice";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -57,11 +59,13 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 
 export default function PelangganPage() {
+  const router = useRouter();
   const dispatch = useDispatch();
   const { customers, loading, error, success } = useSelector(
     (state) => state.customer
   );
   const { branches } = useSelector((state) => state.cabang);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const { toast } = useToast();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -75,12 +79,12 @@ export default function PelangganPage() {
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalItems, setTotalItems] = useState(0);
 
-  // Mock user data (replace with actual auth logic)
-  const mockUser = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
+  // Check authentication
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/login');
+    }
+  }, [isAuthenticated, router]);
 
   // Add a function to handle search
   const handleSearch = (e) => {
@@ -280,10 +284,23 @@ export default function PelangganPage() {
     return matchesSearch && matchesBranch && matchesType;
   });
 
-  const handleLogout = () => {
-    // Implement logout functionality
-    console.log("Logging out...");
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+      router.push('/login');
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Gagal logout. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
+
+  // If not authenticated and still loading, show nothing
+  if (!isAuthenticated && !user) {
+    return null;
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
@@ -291,7 +308,7 @@ export default function PelangganPage() {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={mockUser}
+        user={user}
       />
 
       {/* Main Content */}
@@ -299,7 +316,7 @@ export default function PelangganPage() {
         {/* Header */}
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
-          user={mockUser}
+          user={user}
           onLogout={handleLogout}
         />
 

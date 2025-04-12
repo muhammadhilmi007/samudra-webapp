@@ -14,20 +14,17 @@ import { ArrowLeft, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Sidebar from '@/components/layout/sidebar'
+import { logout, hasAccess } from '@/lib/auth'
+import AuthGuard from '@/components/auth/auth-guard'
 
-export default function TambahDivisiPage() {
+// Wrap the main component with AuthGuard
+function TambahDivisiContent() {
   const router = useRouter()
   const dispatch = useDispatch()
   const { loading, error, success } = useSelector((state) => state.divisi)
+  const { user, isAuthenticated } = useSelector((state) => state.auth)
   const { toast } = useToast()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: 'Admin User',
-    jabatan: 'Administrator',
-    email: 'admin@example.com'
-  }
   
   const [formData, setFormData] = useState({
     namaDivisi: ''
@@ -90,10 +87,10 @@ export default function TambahDivisiPage() {
     }
   }
   
-  // Mock logout function
-  const handleLogout = () => {
-    console.log('User logged out')
-    // Implement actual logout logic here
+  // Actual logout function using the auth system
+  const handleLogout = async () => {
+    await dispatch(logout())
+    router.push('/login')
   }
   
   return (
@@ -170,5 +167,17 @@ export default function TambahDivisiPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+// Export the component wrapped with AuthGuard to protect this route
+export default function TambahDivisiPage() {
+  return (
+    <AuthGuard
+      requiredAccess={{ resource: 'divisions', action: 'create' }}
+      redirectTo="/unauthorized"
+    >
+      <TambahDivisiContent />
+    </AuthGuard>
   )
 }

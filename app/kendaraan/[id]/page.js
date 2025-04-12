@@ -1,12 +1,13 @@
 // app/kendaraan/[id]/page.js
 "use client";
-
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import VehicleForm from "@/components/forms/vehicle-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { fetchVehicleById } from "@/lib/redux/slices/vehicleSlice";
+import { logout } from "@/lib/redux/slices/authSlice";
+import { useToast } from "@/lib/hooks/use-toast";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import ErrorMessage from "@/components/shared/error-message";
 import Header from "@/components/layout/header";
@@ -15,15 +16,18 @@ import Sidebar from "@/components/layout/sidebar";
 export default function EditVehiclePage() {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const router = useRouter();
+  const { toast } = useToast();
   const { loading, error } = useSelector((state) => state.vehicle);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
+  // Check if user is authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push('/');
+    }
+  }, [isAuthenticated, router]);
 
   // No need to fetch vehicle here - the form component handles it
   // This avoids duplicate fetches that can cause unnecessary re-renders
@@ -34,10 +38,19 @@ export default function EditVehiclePage() {
     { title: "Edit Kendaraan", link: `/kendaraan/${id}`, active: true },
   ];
 
-  // Mock logout function
-  const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+  // Implement actual logout function
+  const handleLogout = async () => {
+    try {
+      await dispatch(logout());
+      router.push('/');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      toast({
+        title: "Error",
+        description: "Gagal logout. Silakan coba lagi.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
