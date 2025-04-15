@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { hasAccess, hasPermission } from "@/lib/auth";
 import {
   createVehicleQueue,
   updateVehicleQueue,
@@ -101,8 +102,15 @@ export default function VehicleQueueForm({ queueId }) {
 
   // Fetch data
   useEffect(() => {
+    console.log("Fetching data for vehicle queue form...");
     dispatch(fetchBranches());
-    dispatch(fetchDeliveryVehicles());
+    dispatch(fetchDeliveryVehicles())
+      .then((result) => {
+        console.log("Delivery vehicles API response:", result);
+      })
+      .catch((error) => {
+        console.error("Error fetching delivery vehicles:", error);
+      });
     dispatch(fetchEmployees());
 
     if (isEditing && queueId) {
@@ -110,24 +118,33 @@ export default function VehicleQueueForm({ queueId }) {
     }
   }, [dispatch, isEditing, queueId]);
 
+  // Debug log for delivery vehicles
+  useEffect(() => {
+    console.log("Current delivery vehicles in state:", deliveryVehicles);
+  }, [deliveryVehicles]);
+
   // Populate form when data is fetched
   useEffect(() => {
     if (isEditing && currentVehicleQueue) {
-      form.reset({
-        kendaraanId:
-          currentVehicleQueue.kendaraanId?._id ||
-          currentVehicleQueue.kendaraanId ||
-          "",
-        supirId:
-          currentVehicleQueue.supirId?._id || currentVehicleQueue.supirId || "",
-        kenekId:
-          currentVehicleQueue.kenekId?._id || currentVehicleQueue.kenekId || "",
-        cabangId:
-          currentVehicleQueue.cabangId?._id ||
-          currentVehicleQueue.cabangId ||
-          "",
+      // Handle the case where the data might be populated or just IDs
+      const formData = {
+        kendaraanId: typeof currentVehicleQueue.kendaraanId === 'object' && currentVehicleQueue.kendaraanId?._id
+          ? currentVehicleQueue.kendaraanId._id
+          : currentVehicleQueue.kendaraanId || "",
+        supirId: typeof currentVehicleQueue.supirId === 'object' && currentVehicleQueue.supirId?._id
+          ? currentVehicleQueue.supirId._id
+          : currentVehicleQueue.supirId || "",
+        kenekId: typeof currentVehicleQueue.kenekId === 'object' && currentVehicleQueue.kenekId?._id
+          ? currentVehicleQueue.kenekId._id
+          : currentVehicleQueue.kenekId || "",
+        cabangId: typeof currentVehicleQueue.cabangId === 'object' && currentVehicleQueue.cabangId?._id
+          ? currentVehicleQueue.cabangId._id
+          : currentVehicleQueue.cabangId || "",
         status: currentVehicleQueue.status || "MENUNGGU",
-      });
+      };
+      
+      // Reset form with the extracted data
+      form.reset(formData);
     }
   }, [form, isEditing, currentVehicleQueue]);
 
@@ -163,6 +180,25 @@ export default function VehicleQueueForm({ queueId }) {
   // Handle form submission
   const onSubmit = async (data) => {
     try {
+      // Check permissions before submitting
+      if (isEditing && !hasAccess('vehicles', 'edit')) {
+        toast({
+          title: "Akses Ditolak",
+          description: "Anda tidak memiliki izin untuk mengedit antrian kendaraan",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!isEditing && !hasAccess('vehicles', 'create')) {
+        toast({
+          title: "Akses Ditolak",
+          description: "Anda tidak memiliki izin untuk membuat antrian kendaraan baru",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (isEditing) {
         await dispatch(updateVehicleQueue({ id: queueId, queueData: data }));
       } else {
@@ -170,6 +206,11 @@ export default function VehicleQueueForm({ queueId }) {
       }
     } catch (error) {
       console.error("Error submitting form:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Terjadi kesalahan saat menyimpan data",
+        variant: "destructive",
+      });
     }
   };
 

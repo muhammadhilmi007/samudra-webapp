@@ -3,7 +3,10 @@
 
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { logout } from "@/lib/redux/slices/authSlice";
+import { hasAccess } from "@/lib/auth";
 import {
   fetchVehicleQueues,
   deleteVehicleQueue,
@@ -57,6 +60,7 @@ import Sidebar from "@/components/layout/sidebar";
 
 export default function VehicleQueueListPage() {
   const dispatch = useDispatch();
+  const router = useRouter();
   const { vehicleQueues, loading, error, success } = useSelector(
     (state) => state.vehicleQueue
   );
@@ -76,12 +80,8 @@ export default function VehicleQueueListPage() {
   const [newStatus, setNewStatus] = useState("");
   const [prevSuccess, setPrevSuccess] = useState(false);
 
-  // Mock user data (replace with actual auth logic)
-  const mockUser = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@samudra-erp.com",
-  };
+  // Get user data from auth state
+  const { user } = useSelector((state) => state.auth);
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/dashboard" },
@@ -89,38 +89,59 @@ export default function VehicleQueueListPage() {
   ];
 
   useEffect(() => {
-    dispatch(fetchVehicleQueues());
-    dispatch(fetchBranches());
-  }, [dispatch]);
-
-  useEffect(() => {
-    if (error) {
+    // Check if user has access to vehicle queue module
+    if (!hasAccess('vehicles', 'view')) {
       toast({
-        title: "Error",
-        description: error,
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki izin untuk mengakses modul ini",
         variant: "destructive",
       });
+      router.push("/unauthorized");
+      return;
     }
+    
+    // Fetch initial data
+    const loadInitialData = async () => {
+      try {
+        await dispatch(fetchVehicleQueues()).unwrap();
+        await dispatch(fetchBranches()).unwrap();
+      } catch (error) {
+        console.error("Error loading initial data:", error);
+        toast({
+          title: "Error",
+          description: "Gagal memuat data. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
+    };
+    
+    loadInitialData();
+  }, [dispatch, router, toast]);
 
+  useEffect(() => {
+    // Handle errors
+    error && toast({
+      title: "Error",
+      description: error,
+      variant: "destructive",
+    });
+
+    // Handle success
     if (success && !prevSuccess) {
       toast({
         title: "Berhasil",
         description: "Operasi antrian kendaraan berhasil dilakukan",
         variant: "success",
       });
-
-      if (queueToDelete) {
-        setQueueToDelete(null);
-      }
-
-      if (queueToUpdate) {
-        setQueueToUpdate(null);
-      }
+      
+      // Clean up state in one go
+      setQueueToDelete(null);
+      setQueueToUpdate(null);
     }
 
     // Update previous success state
     setPrevSuccess(success);
-  }, [error, success, toast, queueToDelete, queueToUpdate]);
+  }, [error, success, prevSuccess, toast]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -132,18 +153,52 @@ export default function VehicleQueueListPage() {
   };
 
   const handleDeleteClick = (queue) => {
+    // Check if user has permission to delete
+    if (!hasAccess('vehicles', 'delete')) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki izin untuk menghapus antrian kendaraan",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setQueueToDelete(queue);
     setDeleteDialogOpen(true);
   };
 
   const handleConfirmDelete = async () => {
     if (queueToDelete) {
-      await dispatch(deleteVehicleQueue(queueToDelete._id));
-      setDeleteDialogOpen(false);
+      try {
+        await dispatch(deleteVehicleQueue(queueToDelete._id)).unwrap();
+        toast({
+          title: "Berhasil",
+          description: "Antrian kendaraan berhasil dihapus",
+          variant: "success",
+        });
+        setDeleteDialogOpen(false);
+      } catch (error) {
+        console.error("Error deleting vehicle queue:", error);
+        toast({
+          title: "Error",
+          description: "Gagal menghapus antrian kendaraan. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleStatusClick = (queue) => {
+    // Check if user has permission to update status
+    if (!hasAccess('vehicles', 'edit')) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki izin untuk mengubah status antrian kendaraan",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setQueueToUpdate(queue);
     setNewStatus(queue.status);
     setStatusDialogOpen(true);
@@ -151,10 +206,26 @@ export default function VehicleQueueListPage() {
 
   const handleConfirmStatusUpdate = async () => {
     if (queueToUpdate && newStatus) {
-      await dispatch(
-        updateVehicleQueueStatus({ id: queueToUpdate._id, status: newStatus })
-      );
-      setStatusDialogOpen(false);
+      try {
+        await dispatch(
+          updateVehicleQueueStatus({ id: queueToUpdate._id, status: newStatus })
+        ).unwrap();
+        
+        toast({
+          title: "Berhasil",
+          description: `Status antrian kendaraan berhasil diubah menjadi ${newStatus}`,
+          variant: "success",
+        });
+        
+        setStatusDialogOpen(false);
+      } catch (error) {
+        console.error("Error updating vehicle queue status:", error);
+        toast({
+          title: "Error",
+          description: "Gagal mengubah status antrian kendaraan. Silakan coba lagi.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -168,6 +239,7 @@ export default function VehicleQueueListPage() {
 
   // Find branch name by id
   const getBranchName = (branchId) => {
+    if (!branchId) return "-";
     const branch = branches.find((branch) => branch._id === branchId);
     return branch ? branch.namaCabang : "-";
   };
@@ -208,11 +280,15 @@ export default function VehicleQueueListPage() {
       ?.toLowerCase()
       .includes(searchQuery.toLowerCase());
 
+    const branchName = getBranchName(queue.cabangId);
+    const branchMatch = branchName.toLowerCase().includes(searchQuery.toLowerCase());
+
     const matchesSearch =
-      vehicleMatch || driverMatch || helperMatch || !searchQuery;
+      vehicleMatch || driverMatch || helperMatch || branchMatch || !searchQuery;
     const matchesBranch =
       !filterBranch ||
       filterBranch === "all" ||
+      queue.cabangId?._id === filterBranch ||
       queue.cabangId === filterBranch;
     const matchesStatus =
       !filterStatus || filterStatus === "all" || queue.status === filterStatus;
@@ -254,8 +330,8 @@ export default function VehicleQueueListPage() {
   });
 
   const handleLogout = () => {
-    // Implement logout functionality
-    console.log("Logging out...");
+    dispatch(logout());
+    router.push("/login");
   };
 
   return (
@@ -264,7 +340,7 @@ export default function VehicleQueueListPage() {
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        user={mockUser}
+        user={user}
       />
 
       {/* Main Content */}
@@ -272,7 +348,7 @@ export default function VehicleQueueListPage() {
         {/* Header */}
         <Header
           onMenuButtonClick={() => setSidebarOpen(true)}
-          user={mockUser}
+          user={user}
           onLogout={handleLogout}
         />
 
@@ -452,7 +528,7 @@ export default function VehicleQueueListPage() {
                             <TableCell>{queue.supirId?.nama || "-"}</TableCell>
                             <TableCell>{queue.kenekId?.nama || "-"}</TableCell>
                             <TableCell>
-                              {getBranchName(queue.cabangId)}
+                              {getBranchName(queue.cabangId?._id || queue.cabangId)}
                             </TableCell>
                             <TableCell>
                               {formatQueueStatus(queue.status)}

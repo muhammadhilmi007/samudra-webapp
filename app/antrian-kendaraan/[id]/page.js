@@ -2,9 +2,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import VehicleQueueForm from "@/components/forms/vehicle-queue-form";
+import { logout } from "@/lib/redux/slices/authSlice";
+import { hasAccess } from "@/lib/auth";
+import { useToast } from "@/lib/hooks/use-toast";
+import VehicleQueueForm from "@/components/forms/vehicle-queue-form.jsx";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { fetchVehicleQueueById } from "@/lib/redux/slices/vehicleQueueSlice";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -15,21 +18,42 @@ import Sidebar from "@/components/layout/sidebar";
 export default function EditVehicleQueuePage() {
   const { id } = useParams();
   const dispatch = useDispatch();
+  const router = useRouter();
+  const { toast } = useToast();
   const { loading, error, currentVehicleQueue } = useSelector((state) => state.vehicleQueue);
+  const { user } = useSelector((state) => state.auth);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Mock user data - in a real app, this would come from your auth system
-  const user = {
-    nama: "Admin User",
-    jabatan: "Administrator",
-    email: "admin@example.com",
-  };
-
   useEffect(() => {
-    if (id) {
-      dispatch(fetchVehicleQueueById(id));
+    // Check if user has access to edit vehicle queue
+    if (!hasAccess('vehicles', 'edit')) {
+      toast({
+        title: "Akses Ditolak",
+        description: "Anda tidak memiliki izin untuk mengedit antrian kendaraan",
+        variant: "destructive",
+      });
+      router.push("/unauthorized");
+      return;
     }
-  }, [dispatch, id]);
+    
+    // Fetch vehicle queue data
+    const loadVehicleQueue = async () => {
+      if (id) {
+        try {
+          await dispatch(fetchVehicleQueueById(id)).unwrap();
+        } catch (error) {
+          console.error("Error fetching vehicle queue:", error);
+          toast({
+            title: "Error",
+            description: "Gagal memuat data antrian kendaraan. Silakan coba lagi.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    
+    loadVehicleQueue();
+  }, [dispatch, id, router, toast]);
 
   const breadcrumbItems = [
     { title: "Dashboard", link: "/dashboard" },
@@ -37,10 +61,10 @@ export default function EditVehicleQueuePage() {
     { title: "Edit Antrian Kendaraan", link: `/antrian-kendaraan/${id}`, active: true },
   ];
 
-  // Mock logout function
+  // Logout function
   const handleLogout = () => {
-    console.log("User logged out");
-    // Implement actual logout logic here
+    dispatch(logout());
+    router.push("/login");
   };
 
   if (loading && !currentVehicleQueue) {
