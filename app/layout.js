@@ -1,24 +1,21 @@
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Providers } from '@/lib/redux/provider'
-import { Toaster } from '@/components/ui/toaster'
-
-const inter = Inter({ subsets: ['latin'] })
-
-export const metadata = {
-  title: 'Samudra ERP - Sistem Manajemen Logistik & Pengiriman',
-  description: 'Sistem Enterprise Resource Planning untuk perusahaan logistik dan pengiriman',
-}
+// This is a Server Component
+import ClientLayout from './ClientLayout';
+import { metadata } from './metadata';
+import './globals.css';
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="id" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>
-          {children}
-          <Toaster />
-        </Providers>
+    <html lang="id">
+      <head>
+        <title>{metadata.title}</title>
+        <meta name="description" content={metadata.description} />
+      </head>
+      <body>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
-  )
+  );
 }
+
+// Export metadata for Next.js
+export { metadata };

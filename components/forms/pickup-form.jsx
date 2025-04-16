@@ -1,4 +1,3 @@
-// components/forms/pickup-form.jsx - Final version
 "use client";
 
 import { useState, useEffect } from 'react';
