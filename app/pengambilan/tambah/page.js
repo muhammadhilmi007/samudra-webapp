@@ -26,7 +26,7 @@ import { hasAccess } from "@/lib/auth";
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 import { PickupForm } from "@/components/forms/pickup-form";
 
 export default function AddPickupPage() {

@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/lib/redux/slices/authSlice";
 import { useToast } from "@/lib/hooks/use-toast";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function TambahPelangganPage() {
   const router = useRouter();

@@ -1,5 +1,6 @@
 // Export all UI components
 export * from './alert-dialog';
+export * from './collapsible';
 export * from './alert';
 export * from './avatar';
 export * from './badge';

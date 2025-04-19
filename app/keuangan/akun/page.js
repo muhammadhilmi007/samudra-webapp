@@ -14,7 +14,7 @@ import Link from "next/link";
 import { PlusCircle, FileDown, Filter } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AccountsPage() {
   const dispatch = useDispatch();

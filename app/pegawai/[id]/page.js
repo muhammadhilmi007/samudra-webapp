@@ -39,7 +39,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { ArrowLeft, Loader2, Upload, User, FileText } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 // Rename the main component to be wrapped with AuthGuard later
 function EditPegawaiContent({ params }) {

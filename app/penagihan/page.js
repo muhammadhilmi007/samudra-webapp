@@ -46,7 +46,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import Header from '@/components/layout/header';
-import Sidebar from '@/components/layout/sidebar';
+import Sidebar from '@/components/layout/DynamicSidebar';
 import { DatePicker } from '@/components/shared/date-picker';
 
 export default function PenagihanPage() {

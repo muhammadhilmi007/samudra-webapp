@@ -52,7 +52,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 
 export default function TruckQueuePage() {

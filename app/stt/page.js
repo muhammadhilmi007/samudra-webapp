@@ -47,7 +47,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function STTListPage() {
   const dispatch = useDispatch();

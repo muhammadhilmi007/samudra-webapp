@@ -39,7 +39,7 @@ import {
 import Link from "next/link";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 import StatusBadge from "@/components/shared/status-badge";
 import { formatDate } from "@/lib/utils";
 import {

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useToast } from "@/lib/hooks/use-toast";
 import AssetForm from "@/components/forms/asset-form";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function TambahAsetPage() {
   const [submitting, setSubmitting] = useState(false);

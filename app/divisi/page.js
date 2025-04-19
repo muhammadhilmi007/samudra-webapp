@@ -33,7 +33,7 @@ import { useToast } from '@/lib/hooks/use-toast'
 import { formatDate } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import Header from '@/components/layout/header'
-import Sidebar from '@/components/layout/sidebar'
+import Sidebar from '@/components/layout/DynamicSidebar'
 import { logout } from '@/lib/auth'
 import { HasPermission, HasAccess } from '@/components/auth/rbac-guard'
 

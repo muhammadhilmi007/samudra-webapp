@@ -44,7 +44,7 @@ import { Plus, Edit, Trash2, Loader2, Search, X } from "lucide-react";
 import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate } from "@/lib/utils";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 // Rename the main component to be wrapped with AuthGuard later
 function CabangContent() {

@@ -8,6 +8,16 @@ import { getMe } from '@/lib/redux/slices/authSlice';
 import { hasRole, hasPermission, hasAccess } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
 
+// Helper function to check if user has any of the required roles
+const hasAnyRole = (requiredRoles) => {
+  return requiredRoles.some(role => hasRole(role));
+};
+
+// Helper function to check if user has any of the required permissions
+const hasAnyPermission = (requiredPermissions) => {
+  return requiredPermissions.some(permission => hasPermission(permission));
+};
+
 /**
  * AuthGuard component for protecting routes based on authentication and authorization
  * 
@@ -47,17 +57,58 @@ export default function AuthGuard({
 
         // Check roles if specified
         if (requiredRoles.length > 0) {
-          isAuthorized = isAuthorized && requiredRoles.some(role => hasRole(role));
+          isAuthorized = isAuthorized && hasAnyRole(requiredRoles);
         }
 
         // Check permissions if specified
         if (requiredPermissions.length > 0) {
-          isAuthorized = isAuthorized && requiredPermissions.some(perm => hasPermission(perm));
+          isAuthorized = isAuthorized && hasAnyPermission(requiredPermissions);
         }
 
         // Check resource-based access if specified
-        if (requiredAccess && requiredAccess.resource && requiredAccess.action) {
-          isAuthorized = isAuthorized && hasAccess(requiredAccess.resource, requiredAccess.action);
+        if (requiredAccess) {
+          const { resource, action, data } = requiredAccess;
+          if (resource && action) {
+            isAuthorized = isAuthorized && hasAccess(resource, action, data);
+          }
+        }
+
+        // Check for admin override - if user has admin role or admin_access permission
+        if (!isAuthorized && (hasRole('admin') || hasPermission('admin_access'))) {
+          console.log('Admin override applied for access control');
+          isAuthorized = true;
+        }
+        
+        // Check for direktur role override - enhanced detection
+        const isDirektur = (
+          // Check by username
+          user?.username === 'ahmad_direktur' ||
+          // Check in user.roles array
+          user?.roles?.some(role => 
+            role.name?.toLowerCase() === 'direktur' || 
+            role.code?.toLowerCase() === 'direktur' || 
+            role.kodeRole?.toLowerCase() === 'direktur') ||
+          // Check in legacy user.role field
+          (typeof user?.role === 'string' && user.role.toLowerCase() === 'direktur')
+        );
+          
+        // Special override for RBAC features
+        if (!isAuthorized && isDirektur) {
+          // Check if this is an RBAC-related route
+          const isRbacRoute = [
+            '/users', 
+            '/roles', 
+            '/permissions', 
+            '/menu-access'
+          ].some(route => window.location.pathname.startsWith(route));
+          
+          if (isRbacRoute) {
+            console.log('Direktur role override applied for RBAC access control');
+            isAuthorized = true;
+          } else {
+            console.log('Direktur role override applied for general access control');
+            isAuthorized = true;
+          }
         }
 
         setAuthorized(isAuthorized);

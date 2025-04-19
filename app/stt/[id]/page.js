@@ -9,7 +9,7 @@ import { fetchSTTById } from "@/lib/redux/slices/sttSlice";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import ErrorMessage from "@/components/shared/error-message";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function EditSTTPage() {
   const { id } = useParams();

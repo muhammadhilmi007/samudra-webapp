@@ -1,360 +1,435 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { 
-  Button, 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { useAuth } from '@/lib/hooks/use-auth';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
+import PageHeader from '@/components/layout/header';
+import AuthGuard from '@/components/auth/auth-guard';
+import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Input,
-  Select
-} from '@/components/ui/index';
+} from "@/components/ui/dialog";
 import {
-  Edit, 
-  Plus, 
-  Trash2, 
-  Search,
-  RefreshCw,
-  Eye,
-  EyeOff
-} from 'lucide-react';
-import DashboardLayout from '@/components/layout/dashboard-layout';
-import PermissionForm from '@/components/forms/PermissionForm';
-import api from '@/lib/api';
-import { useAuth } from '@/lib/hooks/useAuth';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import API_URL from '@/lib/api';
 
-const PermissionsPage = () => {
+export default function PermissionsPage() {
+  return (
+    <AuthGuard requiredPermissions={['manage_permissions']}>
+      <PermissionsContent />
+    </AuthGuard>
+  );
+}
+
+function PermissionsContent() {
   const router = useRouter();
-  const { user, checkPermission } = useAuth();
-  const [permissions, setPermissions] = useState([]);
+  const { token } = useAuth();
+  
   const [loading, setLoading] = useState(true);
-  const [selectedPermission, setSelectedPermission] = useState(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isFormDialogOpen, setIsFormDialogOpen] = useState(false);
-  const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
-  const [syncLoading, setSyncLoading] = useState(false);
-  
-  // Filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
+  const [permissions, setPermissions] = useState([]);
   const [categories, setCategories] = useState([]);
-  
-  // Check if user has permission to manage permissions
+  const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingPermission, setEditingPermission] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    description: '',
+    category: '',
+    isActive: true
+  });
+
   useEffect(() => {
-    if (user && !checkPermission('manage_roles') && !checkPermission('view_roles')) {
-      toast.error('Anda tidak memiliki akses ke halaman ini');
-      router.push('/dashboard');
-    }
-  }, [user, router, checkPermission]);
-  
-  // Fetch permission categories
-  useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchData = async () => {
       try {
-        const response = await api.get('/permissions/categories');
-        setCategories(response.data.data);
+        setLoading(true);
+        
+        // Fetch permissions grouped by category
+        const response = await axios.get(`${API_URL}/permissions/by-category`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Fetch categories
+        const categoriesResponse = await axios.get(`${API_URL}/permissions/categories`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        // Flatten permissions for easier filtering
+        const allPermissions = [];
+        Object.keys(response.data.data).forEach(category => {
+          response.data.data[category].forEach(permission => {
+            allPermissions.push({
+              ...permission,
+              category
+            });
+          });
+        });
+        
+        setPermissions(allPermissions);
+        setCategories(categoriesResponse.data.data);
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching permission categories:', error);
+        console.error('Error fetching permissions:', error);
+        toast.error('Gagal memuat data izin');
+        setLoading(false);
       }
     };
-    
-    fetchCategories();
-  }, []);
-  
-  // Fetch permissions
-  const fetchPermissions = async () => {
-    setLoading(true);
+
+    if (token) {
+      fetchData();
+    }
+  }, [token]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSelectChange = (name, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCreatePermission = async () => {
     try {
-      const params = {};
-      
-      if (searchQuery) {
-        params.search = searchQuery;
+      // Validate form
+      if (!formData.name || !formData.code || !formData.category) {
+        toast.error('Nama, kode, dan kategori harus diisi');
+        return;
       }
-      
-      if (categoryFilter) {
-        params.category = categoryFilter;
-      }
-      
-      const response = await api.get('/permissions', { params });
-      setPermissions(response.data.data);
+
+      const response = await axios.post(
+        `${API_URL}/permissions`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      // Add new permission to state
+      setPermissions(prev => [...prev, {
+        ...response.data.data,
+        category: formData.category
+      }]);
+
+      // Reset form
+      setFormData({
+        name: '',
+        code: '',
+        description: '',
+        category: '',
+        isActive: true
+      });
+
+      setIsDialogOpen(false);
+      toast.success('Izin berhasil dibuat');
     } catch (error) {
-      console.error('Error fetching permissions:', error);
-      toast.error('Gagal mengambil data permission');
-    } finally {
-      setLoading(false);
+      console.error('Error creating permission:', error);
+      toast.error(error.response?.data?.message || 'Gagal membuat izin');
     }
   };
-  
-  useEffect(() => {
-    fetchPermissions();
-  }, [searchQuery, categoryFilter]);
-  
-  // Handle edit permission
-  const handleEditPermission = (permission) => {
-    setSelectedPermission(permission);
-    setIsFormDialogOpen(true);
-  };
-  
-  // Handle delete permission
-  const handleDeletePermission = (permission) => {
-    setSelectedPermission(permission);
-    setIsDeleteDialogOpen(true);
-  };
-  
-  // Confirm delete permission
-  const confirmDeletePermission = async () => {
+
+  const handleUpdatePermission = async () => {
     try {
-      await api.delete(`/permissions/${selectedPermission._id}`);
-      toast.success('Permission berhasil dihapus');
-      fetchPermissions();
+      // Validate form
+      if (!formData.name || !formData.code || !formData.category) {
+        toast.error('Nama, kode, dan kategori harus diisi');
+        return;
+      }
+
+      const response = await axios.put(
+        `${API_URL}/permissions/${editingPermission._id}`,
+        formData,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      // Update permission in state
+      setPermissions(prev => prev.map(p => 
+        p._id === editingPermission._id 
+          ? { ...response.data.data, category: formData.category } 
+          : p
+      ));
+
+      // Reset form
+      setFormData({
+        name: '',
+        code: '',
+        description: '',
+        category: '',
+        isActive: true
+      });
+
+      setEditingPermission(null);
+      setIsDialogOpen(false);
+      toast.success('Izin berhasil diperbarui');
+    } catch (error) {
+      console.error('Error updating permission:', error);
+      toast.error(error.response?.data?.message || 'Gagal memperbarui izin');
+    }
+  };
+
+  const handleDeletePermission = async (id) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus izin ini?')) {
+      return;
+    }
+
+    try {
+      await axios.delete(
+        `${API_URL}/permissions/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+
+      // Remove permission from state
+      setPermissions(prev => prev.filter(p => p._id !== id));
+      toast.success('Izin berhasil dihapus');
     } catch (error) {
       console.error('Error deleting permission:', error);
-      toast.error(error.response?.data?.message || 'Gagal menghapus permission');
-    } finally {
-      setIsDeleteDialogOpen(false);
-      setSelectedPermission(null);
+      toast.error(error.response?.data?.message || 'Gagal menghapus izin');
     }
   };
-  
-  // Handle form success
-  const handleFormSuccess = () => {
-    setIsFormDialogOpen(false);
-    setSelectedPermission(null);
-    fetchPermissions();
+
+  const handleEditPermission = (permission) => {
+    setEditingPermission(permission);
+    setFormData({
+      name: permission.name,
+      code: permission.code,
+      description: permission.description || '',
+      category: permission.category,
+      isActive: permission.isActive
+    });
+    setIsDialogOpen(true);
   };
-  
-  // Sync permissions with Role model
-  const syncPermissions = async () => {
-    setSyncLoading(true);
-    try {
-      const response = await api.post('/permissions/sync');
-      toast.success(`${response.data.count} permission baru berhasil disinkronkan`);
-      fetchPermissions();
-    } catch (error) {
-      console.error('Error syncing permissions:', error);
-      toast.error('Gagal menyinkronkan permission');
-    } finally {
-      setSyncLoading(false);
-      setIsSyncDialogOpen(false);
-    }
-  };
-  
+
+  const filteredPermissions = permissions.filter(permission => {
+    // Filter by search term
+    const matchesSearch = 
+      permission.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      permission.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (permission.description && permission.description.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    // Filter by category tab
+    const matchesCategory = activeTab === 'all' || permission.category === activeTab;
+    
+    return matchesSearch && matchesCategory;
+  });
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
   return (
-    <DashboardLayout>
-      <div className="container mx-auto py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Manajemen Permission</h1>
-          
-          <div className="flex space-x-2">
-            {checkPermission('manage_roles') && (
-              <>
-                <Dialog open={isSyncDialogOpen} onOpenChange={setIsSyncDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Sinkronkan Permission
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Sinkronkan Permission</DialogTitle>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <p>
-                        Tindakan ini akan menyinkronkan permission dari Role model ke Permission model.
-                        Permission baru akan dibuat untuk setiap permission yang ada di Role model
-                        tetapi belum ada di Permission model.
-                      </p>
-                      <p className="text-sm text-amber-500 mt-2">
-                        Perhatian: Permission yang sudah ada tidak akan diubah.
-                      </p>
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setIsSyncDialogOpen(false)}
-                      >
-                        Batal
-                      </Button>
-                      <Button 
-                        onClick={syncPermissions}
-                        disabled={syncLoading}
-                      >
-                        {syncLoading ? 'Menyinkronkan...' : 'Sinkronkan'}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                
-                <Dialog open={isFormDialogOpen} onOpenChange={setIsFormDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Tambah Permission
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>
-                        {selectedPermission ? 'Edit Permission' : 'Tambah Permission Baru'}
-                      </DialogTitle>
-                    </DialogHeader>
-                    <PermissionForm
-                      permission={selectedPermission}
-                      onSuccess={handleFormSuccess}
-                      onCancel={() => setIsFormDialogOpen(false)}
-                      inDialog={true}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </>
-            )}
-          </div>
-        </div>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Daftar Permission</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input
-                    placeholder="Cari permission..."
-                    className="pl-8"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="w-full md:w-64">
-                <Select
-                  value={categoryFilter}
-                  onChange={(e) => setCategoryFilter(e.target.value)}
-                >
-                  <option value="">Semua Kategori</option>
-                  {categories.map(category => (
-                    <option key={category} value={category}>
-                      {category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-            
-            {loading ? (
-              <div className="text-center py-4">Memuat data...</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nama Permission</TableHead>
-                      <TableHead>Kode</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Deskripsi</TableHead>
-                      <TableHead className="text-center">Status</TableHead>
-                      <TableHead className="text-right">Aksi</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {permissions.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center">
-                          Tidak ada data permission
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      permissions.map(permission => (
-                        <TableRow key={permission._id}>
-                          <TableCell className="font-medium">{permission.name}</TableCell>
-                          <TableCell>{permission.code}</TableCell>
-                          <TableCell>
-                            {permission.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate">
-                            {permission.description || '-'}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {permission.isActive ? (
-                              <Eye className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <EyeOff className="h-4 w-4 text-red-500 mx-auto" />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditPermission(permission)}
-                                disabled={!checkPermission('manage_roles')}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => handleDeletePermission(permission)}
-                                disabled={!checkPermission('manage_roles')}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+    <div className="container mx-auto p-4">
+      <PageHeader
+        title="Manajemen Izin"
+        subtitle="Kelola izin akses untuk sistem"
+        actions={
+          <Button onClick={() => {
+            setEditingPermission(null);
+            setFormData({
+              name: '',
+              code: '',
+              description: '',
+              category: '',
+              isActive: true
+            });
+            setIsDialogOpen(true);
+          }}>
+            <Plus className="mr-2 h-4 w-4" /> Tambah Izin
+          </Button>
+        }
+      />
+
+      <div className="mb-6">
+        <Input
+          placeholder="Cari izin..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-md"
+        />
       </div>
-      
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+
+      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="all">Semua</TabsTrigger>
+          {categories.map(category => (
+            <TabsTrigger key={category} value={category}>
+              {category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        <TabsContent value={activeTab}>
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {activeTab === 'all' 
+                  ? 'Semua Izin' 
+                  : `Izin ${activeTab.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}`}
+              </CardTitle>
+              <CardDescription>
+                {filteredPermissions.length} izin ditemukan
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPermissions.map(permission => (
+                  <Card key={permission._id} className="overflow-hidden">
+                    <CardHeader className="p-4 pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-base">{permission.name}</CardTitle>
+                          <Badge variant="outline" className="mt-1">
+                            {permission.code}
+                          </Badge>
+                        </div>
+                        <div className="flex space-x-1">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleEditPermission(permission)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => handleDeletePermission(permission._id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-2">
+                      {permission.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {permission.description}
+                        </p>
+                      )}
+                      <div className="flex items-center mt-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {permission.category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                        </Badge>
+                        {!permission.isActive && (
+                          <Badge variant="destructive" className="ml-2 text-xs">
+                            Tidak Aktif
+                          </Badge>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Konfirmasi Hapus Permission</DialogTitle>
+            <DialogTitle>
+              {editingPermission ? 'Edit Izin' : 'Tambah Izin Baru'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingPermission 
+                ? 'Edit detail izin yang sudah ada' 
+                : 'Tambahkan izin baru ke sistem'}
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <p>
-              Apakah Anda yakin ingin menghapus permission <strong>{selectedPermission?.name}</strong>?
-            </p>
-            <p className="text-sm text-red-500 mt-2">
-              Perhatian: Permission yang sedang digunakan oleh role tidak dapat dihapus.
-            </p>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nama Izin</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="Lihat Dashboard"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="code">Kode Izin</Label>
+              <Input
+                id="code"
+                name="code"
+                value={formData.code}
+                onChange={handleInputChange}
+                placeholder="view_dashboard"
+              />
+              <p className="text-xs text-muted-foreground">
+                Hanya huruf kecil, angka, dan underscore
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="category">Kategori</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value) => handleSelectChange('category', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(category => (
+                    <SelectItem key={category} value={category}>
+                      {category.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Deskripsi</Label>
+              <Input
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="Izin untuk melihat halaman dashboard"
+              />
+            </div>
           </div>
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Batal
             </Button>
-            <Button variant="destructive" onClick={confirmDeletePermission}>
-              Hapus
+            <Button onClick={editingPermission ? handleUpdatePermission : handleCreatePermission}>
+              {editingPermission ? 'Perbarui' : 'Tambah'} Izin
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </div>
   );
-};
-
-export default PermissionsPage;
+}

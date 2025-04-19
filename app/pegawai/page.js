@@ -55,7 +55,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { formatDate, getInitials } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 // Rename the main component to be wrapped with AuthGuard later
 function PegawaiContent() {

@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AsetPage() {
   const [assets, setAssets] = useState([]);

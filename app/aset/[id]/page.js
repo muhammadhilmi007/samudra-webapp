@@ -28,7 +28,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import ConfirmDialog from "@/components/shared/confirm-dialog";
 import AssetForm from "@/components/forms/asset-form";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 import { use } from "react";
 

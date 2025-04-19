@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import AuthGuard from "@/components/auth/auth-guard";

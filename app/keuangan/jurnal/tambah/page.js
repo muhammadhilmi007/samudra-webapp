@@ -29,7 +29,7 @@ import { useToast } from '@/lib/hooks/use-toast';
 import { DatePicker } from '@/components/shared/date-picker';
 import Link from 'next/link';
 import Header from '@/components/layout/header';
-import Sidebar from '@/components/layout/sidebar';
+import Sidebar from '@/components/layout/DynamicSidebar';
 
 export default function TambahJurnalPage() {
   const router = useRouter();

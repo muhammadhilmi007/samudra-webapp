@@ -23,7 +23,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Header from '@/components/layout/header'
-import Sidebar from '@/components/layout/sidebar'
+import Sidebar from '@/components/layout/DynamicSidebar'
 import { logout, hasAccess } from '@/lib/auth'
 import AuthGuard from '@/components/auth/auth-guard'
 

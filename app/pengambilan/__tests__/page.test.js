@@ -32,7 +32,7 @@ jest.mock('@/components/layout/header', () => ({
   default: () => <div data-testid="mock-header">Header</div>,
 }));
 
-jest.mock('@/components/layout/sidebar', () => ({
+jest.mock('import Sidebar from '@/components/layout/DynamicSidebar'', () => ({
   __esModule: true,
   default: () => <div data-testid="mock-sidebar">Sidebar</div>,
 }));

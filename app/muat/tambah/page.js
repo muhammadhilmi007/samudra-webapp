@@ -4,7 +4,7 @@ import MuatForm from "@/components/forms/muat-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { useState } from "react";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AddMuatPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

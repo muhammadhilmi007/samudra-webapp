@@ -10,7 +10,7 @@ import { logout } from "@/lib/redux/slices/authSlice";
 import { hasAccess } from "@/lib/auth";
 import { useToast } from "@/lib/hooks/use-toast";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AddVehicleQueuePage() {
   const dispatch = useDispatch();

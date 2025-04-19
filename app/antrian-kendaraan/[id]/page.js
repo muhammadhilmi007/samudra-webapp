@@ -13,7 +13,7 @@ import { fetchVehicleQueueById } from "@/lib/redux/slices/vehicleQueueSlice";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import ErrorMessage from "@/components/shared/error-message";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function EditVehicleQueuePage() {
   const { id } = useParams();

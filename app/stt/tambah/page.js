@@ -4,7 +4,7 @@ import STTForm from "@/components/forms/stt-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { useState } from "react";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AddSTTPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

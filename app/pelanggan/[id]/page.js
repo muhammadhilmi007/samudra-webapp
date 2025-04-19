@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function PelangganDetailPage() {
   const { id } = useParams();

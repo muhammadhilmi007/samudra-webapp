@@ -56,7 +56,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/lib/hooks/use-toast";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function PelangganPage() {
   const router = useRouter();

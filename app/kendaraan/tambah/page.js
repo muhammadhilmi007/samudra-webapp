@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout } from "@/lib/redux/slices/authSlice";
 import { useToast } from "@/lib/hooks/use-toast";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AddVehiclePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

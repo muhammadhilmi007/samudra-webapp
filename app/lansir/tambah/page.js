@@ -4,7 +4,7 @@ import LansirForm from "@/components/forms/lansir-form";
 import { Breadcrumbs } from "@/components/shared/breadcrumbs";
 import { useState } from "react";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function AddLansirPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

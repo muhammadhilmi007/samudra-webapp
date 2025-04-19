@@ -22,6 +22,10 @@ import {
   RotateCcw,
   CreditCard,
   ClipboardList,
+  Settings,
+  Shield,
+  UserCog,
+  LayoutDashboard
 } from "lucide-react";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -72,6 +76,90 @@ const DynamicSidebar = ({ isOpen, onClose, user }) => {
   useEffect(() => {
     setUsingDynamicMenus(accessibleMenus && accessibleMenus.length > 0);
   }, [accessibleMenus]);
+  
+  // Add system management menu items for users with appropriate permissions
+  useEffect(() => {
+    if (user && accessibleMenus && accessibleMenus.length > 0) {
+      // Check if system management section already exists
+      const hasSystemSection = accessibleMenus.some(menu => menu.code === 'system_management');
+      
+      if (!hasSystemSection && user.permissions) {
+        // Cek apakah user memiliki role direktur
+        const isDirektur = user.roles && user.roles.some(role => 
+          role.name.toLowerCase() === 'direktur' || role.code === 'direktur');
+        
+        // Jika direktur, berikan akses ke semua menu sistem
+        const hasRolePermission = isDirektur || user.permissions.some(perm => 
+          ['manage_roles', 'view_roles', 'admin_access'].includes(perm));
+        const hasPermissionPermission = isDirektur || user.permissions.some(perm => 
+          ['manage_permissions', 'view_permissions', 'admin_access'].includes(perm));
+        const hasMenuPermission = isDirektur || user.permissions.some(perm => 
+          ['manage_menu_access', 'view_menu_access', 'admin_access'].includes(perm));
+        
+        const hasUserPermission = isDirektur || user.permissions.some(perm => 
+          ['manage_users', 'view_users', 'admin_access'].includes(perm));
+        
+        if (hasRolePermission || hasPermissionPermission || hasMenuPermission || hasUserPermission) {
+          const systemMenuItems = [];
+          
+          if (hasUserPermission) {
+            systemMenuItems.push({
+              _id: 'users_menu',
+              name: 'Pengguna',
+              path: '/users',
+              icon: 'UserCog',
+              order: 1
+            });
+          }
+          
+          if (hasRolePermission) {
+            systemMenuItems.push({
+              _id: 'roles_menu',
+              name: 'Peran',
+              path: '/roles',
+              icon: 'Users',
+              order: 2
+            });
+          }
+          
+          if (hasPermissionPermission) {
+            systemMenuItems.push({
+              _id: 'permissions_menu',
+              name: 'Izin',
+              path: '/permissions',
+              icon: 'Shield',
+              order: 2
+            });
+          }
+          
+          if (hasMenuPermission) {
+            systemMenuItems.push({
+              _id: 'menu_access_menu',
+              name: 'Akses Menu',
+              path: '/menu-access',
+              icon: 'LayoutDashboard',
+              order: 3
+            });
+          }
+          
+          if (systemMenuItems.length > 0) {
+            const systemManagementMenu = {
+              _id: 'system_management',
+              name: 'Manajemen Sistem',
+              code: 'system_management',
+              icon: 'Settings',
+              path: '#',
+              order: 999, // Place at the end
+              children: systemMenuItems
+            };
+            
+            // Add system management section to accessible menus
+            setAccessibleMenus(prev => [...prev, systemManagementMenu]);
+          }
+        }
+      }
+    }
+  }, [user, accessibleMenus]);
 
   // Expand parent menus of the active menu on initial load for dynamic menus
   useEffect(() => {

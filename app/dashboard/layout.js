@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useDispatch, useSelector } from 'react-redux'
 import { getMe, logout } from '@/lib/redux/slices/authSlice'
-import Sidebar from '@/components/layout/sidebar'
+import Sidebar from '@/components/layout/DynamicSidebar'
 import Header from '@/components/layout/header'
 
 export default function DashboardLayout({ children }) {

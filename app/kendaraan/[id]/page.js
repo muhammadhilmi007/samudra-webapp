@@ -11,7 +11,7 @@ import { useToast } from "@/lib/hooks/use-toast";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
 import ErrorMessage from "@/components/shared/error-message";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
+import Sidebar from '@/components/layout/DynamicSidebar'
 
 export default function EditVehiclePage() {
   const { id } = useParams();
